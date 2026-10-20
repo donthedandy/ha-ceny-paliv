@@ -1,15 +1,15 @@
 # Optional: phone notification whenever the price at your usual station changes (any amount).
 # Paste into automations.yaml (or a package). Replace:
-#   - sensor.mbenzin_n95_home          -> the "home" sensor of the fuel you follow (n95, diesel, lpg, cng)
+#   - sensor.ceny_paliv_n95_home          -> the "home" sensor of the fuel you follow (n95, diesel, lpg, cng)
 #   - notify.mobile_app_YOUR_PHONE     -> your own notify service
 #   - /lovelace/fuel_n95               -> the URL path of the dashboard view that holds the card
 automation:
-  - id: mbenzin_price_alert_n95
+  - id: ceny_paliv_price_alert_n95
     alias: Fuel — home station price change alert
     mode: queued
     triggers:
       - trigger: state
-        entity_id: sensor.mbenzin_n95_home
+        entity_id: sensor.ceny_paliv_n95_home
         not_from: ["unavailable", "unknown"]
         not_to: ["unavailable", "unknown"]
     conditions:
