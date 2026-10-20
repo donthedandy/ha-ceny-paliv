@@ -15,7 +15,8 @@ Integrace pro HACS, která v Home Assistantu ukazuje ceny paliv z [mBenzin.cz](h
 - Vyberete si **město**, **jedno či více paliv** (třeba Natural 95 a LPG pro vůz na dvě paliva) a pro každé palivo **oblíbenou stanici**.
 - Pro každé palivo **5 nejlevnějších stanic ve městě** (jen z vašeho města, nikoli z celého kraje), odkaz na Google Maps a **mapu s cenami**.
 - U oblíbené stanice: aktuální cena, **trendy oproti 1, 2, 7, 14 a 30 dnům**, pořadí ve městě a dlouhodobá statistika (graf za 30 dní).
-- Hotová **karta pro dashboard** (`ceny-paliv-card`) přímo v integraci – přidáte ji z nabídky karet, bez kopírování YAML – s volbou jazyka **čeština / angličtina**.
+- Hotová **karta pro dashboard** (`ceny-paliv-card`) přímo v integraci – přidáte ji z nabídky karet, bez kopírování YAML – s volbou jazyka **čeština / angličtina**. Je **přizpůsobitelná**: na širokém dashboardu dva sloupce, v telefonu jeden, kompaktní verze a každou část (oblíbená stanice, seznam, mapa, graf) lze umístit jako samostatnou kartu.
+- Volitelná **loga čerpacích stanic** (Orlen, MOL, Shell, Tesco…): zaškrtnete řetězce při nastavení a stáhnou se za vás. Řetězce bez loga dostanou barevný odznak s iniciálami.
 - Zastaralé ceny se skrývají: u benzínu a nafty cena starší než včerejšek, u CNG starší než 3 dny, u LPG a AdBlue starší než 7 dní.
 
 ## 1. Získání přístupového klíče (zdarma)
@@ -40,9 +41,10 @@ Co je dobré vědět:
    1. **přístupový klíč**,
    2. **město** (výběr ze seznamu),
    3. **paliva** (jedno nebo více) a **jazyk** textů v dashboardu,
-   4. pro každé palivo **oblíbenou stanici** ze seznamu stanic ve vašem městě (nebo „—“, pokud žádnou nechcete).
+   4. pro každé palivo **oblíbenou stanici** ze seznamu stanic ve vašem městě (nebo „—“, pokud žádnou nechcete),
+   5. volitelně zaškrtnout **loga** řetězců (řetězce z vašeho města jsou předvybrané; viz [Loga čerpacích stanic](#4-loga-čerpacích-stanic-volitelné)).
 
-Paliva, jazyk i oblíbené stanice můžete později změnit tlačítkem **Konfigurovat** u integrace.
+Paliva, jazyk, oblíbené stanice i loga můžete později změnit tlačítkem **Konfigurovat** u integrace.
 
 > Texty samotného nastavení se řídí jazykem Home Assistantu (čeština i angličtina jsou k dispozici). Volba jazyka v kroku „Paliva a jazyk“ určuje jen popisky v kartě pro dashboard.
 
@@ -72,21 +74,57 @@ type: custom:ceny-paliv-card
 fuel: n95            # n95 | benzinplus | diesel | dieselplus | lpg | cng | adblue
 ```
 
-Pro každé palivo jedna karta: pro vůz na dvě paliva přidejte druhou kartu s `fuel: lpg`. Karta ukazuje vaši oblíbenou stanici (cena, trendy, pořadí), 5 nejlevnějších stanic (klepnutím se otevře Google Maps), mapu a graf za 30 dní.
+Pro každé palivo jedna karta: pro vůz na dvě paliva přidejte druhou kartu s `fuel: lpg`. Karta má čtyři části: vaši oblíbenou stanici (cena, trendy, pořadí), 5 nejlevnějších stanic (klepnutím se otevře Google Maps), mapu a graf za 30 dní. Všechny volby níže jsou i ve vizuálním editoru karty.
 
 | Volba | Výchozí | |
 |---|---|---|
 | `fuel` | – | povinné |
-| `show_map` | `true` | mapa 5 nejlevnějších stanic a vaší oblíbené |
-| `show_graph` | `true` | graf za 30 dní oblíbené stanice |
-| `logos` | `[]` | řetězce, pro které máte logo, např. `[orlen, makro, tesco]` |
-| `logo_path` | `/local/` | kde jsou loga uložena |
+| `show` | `[home, list, map, graph]` | které části zobrazit: `home` (oblíbená stanice), `list` (nejlevnější stanice), `map`, `graph` (30 dní) |
+| `layout` | `auto` | `auto`: dva sloupce (stanice a seznam vlevo, mapa a graf vpravo), je-li karta široká, a jeden sloupec, je-li úzká, třeba v telefonu; `columns`: vždy dva; `stack`: vždy jeden |
+| `stations` | `5` | kolik stanic v seznamu (1–5, i na mapě) |
+| `compact` | `false` | úsporná verze: jeden řádek na stanici, trendy na jednom řádku, bez legendy |
+| `show_footer` | `true` (`false` při `compact`) | časy aktualizace a legenda pod seznamem |
+| `map_height` | automaticky | výška mapy v pixelech |
+| `logo_path` | – | jen pokud chcete vlastní PNG místo balíčku log (viz níže) |
 
-Texty karty odpovídají jazyku zvolenému při nastavení. Loga jsou volitelná: kulatá PNG 128 px pojmenovaná podle řetězce (`orlen.png`, …) dejte do `config/www/` a řetězce vypište v `logos`; jde o ochranné známky, proto nejsou součástí. Pokud se karta po aktualizaci nezobrazí, obnovte stránku v prohlížeči (Ctrl+F5).
+Texty karty odpovídají jazyku zvolenému při nastavení. Pokud se karta po aktualizaci nezobrazí, obnovte stránku v prohlížeči (Ctrl+F5).
+
+### Části si rozmístěte, kam chcete
+
+Pomocí více karet s volbou `show` umístíte každou část kamkoli na dashboard, i s jinými kartami mezi nimi:
+
+```yaml
+type: custom:ceny-paliv-card
+fuel: n95
+show: [home]          # jen moje stanice
+---
+type: custom:ceny-paliv-card
+fuel: n95
+show: [list]
+stations: 3
+compact: true         # malá dlaždice se 3 nejlevnějšími stanicemi
+---
+type: custom:ceny-paliv-card
+fuel: n95
+show: [map, graph]
+map_height: 260
+```
+
+(Jsou to tři samostatné karty; `---` je tu jen odděluje.) V dashboardu typu *sekce* si karta velikost přizpůsobí obsahu.
 
 Upozornění na změnu ceny na telefonu: viz `examples/price_alert.yaml`.
 
-## 4. Bez karty: standardní karty
+## 4. Loga čerpacích stanic (volitelné)
+
+Karta u každé stanice ukazuje kulaté logo jejího řetězce. Bez loga nakreslí barevný odznak s iniciálami řetězce (`OR`, `PR`…), takže není třeba nic nastavovat.
+
+Chcete-li skutečná loga, otevřete **Nastavení → Zařízení a služby → Ceny paliv → Konfigurovat**, přejděte na krok **Loga čerpacích stanic** a zaškrtněte řetězce. Stáhnou se (pár KB každé) z [balíčku log](logos/) v tomto repozitáři do složky `ceny_paliv_logos` v konfiguraci Home Assistantu a karta je najde sama. Odškrtnutím logo odstraníte. Při prvním nastavení jsou předvybrané řetězce z vašeho města. Nestahuje se nic, co nezaškrtnete, a balíček se s integrací neinstaluje.
+
+Balíček je také ke stažení jako **`ceny-paliv-logos.zip`** u každého [vydání](https://github.com/donthedandy/ha-ceny-paliv/releases): pokud to raději uděláte ručně, rozbalte ho do `<config>/ceny_paliv_logos/` (nové soubory se načtou po restartu nebo znovunačtení integrace). Můžete tam dát i vlastní čtvercové PNG pojmenované podle řetězce malými písmeny, bez diakritiky, s pomlčkami místo mezer (`eurobit.png`, `robin-oil.png`): takové soubory se používají a nikdy se nemažou. Chcete-li soubory z jiné složky, nastavte na kartě `logo_path: /local/logos/` (soubory pojmenované podle řetězce, např. `/local/logos/orlen.png`).
+
+Loga jsou ochranné známky svých majitelů a slouží jen k označení stanic; projekt s nimi nijak nesouvisí. Zdroje a postup při žádosti o odstranění jsou v [logos/SOURCES.md](logos/SOURCES.md).
+
+## 5. Bez karty: standardní karty
 
 Každý senzor se jmenuje podle toho, co právě ukazuje (např. `1 · Orlen – Bratri Stefanu 69`), takže stanici zobrazí jakákoli standardní karta, bez šablony. Názvy sledují pořadí a mění se při každé aktualizaci; identifikátory entit se nemění.
 

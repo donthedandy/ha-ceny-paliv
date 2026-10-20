@@ -15,7 +15,8 @@ A HACS integration that shows the cheapest stations of **your city** for the fue
 - Pick your **city**, one or **several fuels** (e.g. Natural 95 + LPG for a dual-fuel car) and a **favourite station per fuel**
 - Per fuel: the **top 5 cheapest** stations in the city (only that city, not the region), with a Google Maps link, and a **map**
 - Favourite station: price, **trends vs 1/2/7/14/30 days ago**, rank in town, long-term statistics (the 30-day graph)
-- A ready-made **dashboard card** (`ceny-paliv-card`) shipped with the integration — add it from the card picker, no YAML to copy — in **English or Czech** (your choice during setup)
+- A ready-made **dashboard card** (`ceny-paliv-card`) shipped with the integration — add it from the card picker, no YAML to copy — in **English or Czech** (your choice during setup). It is **flexible**: two columns on a wide dashboard, one on a phone, a compact version, and every part (favourite station, list, map, graph) can be placed as its own card
+- Optional **station logos** (Orlen, MOL, Shell, Tesco…): tick the chains you want in the setup and they are downloaded for you. Chains without a logo get a colour badge with their initials
 - Stale prices are hidden (older than yesterday for petrol/diesel, 3 days for CNG, 7 days for LPG/AdBlue)
 
 ## 1. Get your access key (free)
@@ -35,8 +36,9 @@ mBenzin blocks plain scraping with a browser check, but they give a **personal a
    2. choose your **city**
    3. choose your **fuel(s)** and the **language** of the dashboard texts (English / Čeština)
    4. for each fuel, choose your **favourite station** from the list of stations of your city (or "—" for none)
+   5. optionally tick the **logos** of the chains to show (the chains of your city are preselected; see [Station logos](#4-station-logos-optional))
 
-You can change the fuels, the language and the favourite stations later: the integration's **Configure** button.
+You can change the fuels, the language, the favourite stations and the logos later: the integration's **Configure** button.
 
 > The setup screens follow Home Assistant's own language (English and Czech are provided). The language chosen in step 3 only sets the labels of the dashboard card.
 
@@ -66,21 +68,57 @@ type: custom:ceny-paliv-card
 fuel: n95            # n95 | benzinplus | diesel | dieselplus | lpg | cng | adblue
 ```
 
-One card per fuel: for a dual-fuel car add a second card with `fuel: lpg`. The card shows your favourite station (price, trends, rank), the top 5 with a Google Maps link on tap, a map and the 30-day graph.
+One card per fuel: for a dual-fuel car add a second card with `fuel: lpg`. The card has four parts: your favourite station (price, trends, rank), the top 5 with a Google Maps link on tap, a map and the 30-day graph. Everything below is also in the card's visual editor.
 
 | Option | Default | |
 |---|---|---|
 | `fuel` | – | required |
-| `show_map` | `true` | map with the 5 cheapest stations and your favourite one |
-| `show_graph` | `true` | 30-day graph of your favourite station |
-| `logos` | `[]` | chains that have a logo, e.g. `[orlen, makro, tesco]` |
-| `logo_path` | `/local/` | where the logos are |
+| `show` | `[home, list, map, graph]` | the parts to draw: `home` (favourite station), `list` (cheapest stations), `map`, `graph` (30 days) |
+| `layout` | `auto` | `auto`: two columns (station and list on the left, map and graph on the right) when the card is wide, one column when it is narrow, as on a phone; `columns`: always two; `stack`: always one |
+| `stations` | `5` | how many stations in the list (1–5, also on the map) |
+| `compact` | `false` | dense version: one line per station, trends on one line, no legend |
+| `show_footer` | `true` (`false` if `compact`) | update times and legend below the list |
+| `map_height` | automatic | height of the map in pixels |
+| `logo_path` | – | only to use your own PNG files instead of the logo pack (see below) |
 
-Texts follow the language chosen in the setup. Logos are optional: put round 128 px PNGs named after the chain (`orlen.png`, …) in `config/www/` and list the chains in `logos`; they are trademarks, so none are included. If the card does not show up after an update, reload the browser page (Ctrl+F5).
+Texts follow the language chosen in the setup. If the card does not show up after an update, reload the browser page (Ctrl+F5).
+
+### Place the parts where you want
+
+Use several cards with `show` to put each part anywhere in a dashboard, with other cards in between:
+
+```yaml
+type: custom:ceny-paliv-card
+fuel: n95
+show: [home]          # only my station
+---
+type: custom:ceny-paliv-card
+fuel: n95
+show: [list]
+stations: 3
+compact: true         # small tile with the 3 cheapest stations
+---
+type: custom:ceny-paliv-card
+fuel: n95
+show: [map, graph]
+map_height: 260
+```
+
+(The three cards are separate; `---` only separates them here.) In a *sections* dashboard the card also resizes itself to its content.
 
 For a notification when your station's price changes, see `examples/price_alert.yaml`.
 
-## 4. Without the card: standard cards
+## 4. Station logos (optional)
+
+The card shows a round logo for the chain of each station. Without a logo it draws a coloured badge with the initials of the chain (`OR`, `PR`…), so nothing has to be set up.
+
+To have the real logos, open **Settings → Devices & services → Ceny paliv → Configure** and go to the **Station logos** step: tick the chains you want. They are downloaded (a few KB each) from the [logo pack](logos/) in this repository into the folder `ceny_paliv_logos` of your Home Assistant configuration and the card finds them by itself. Untick a chain to remove its logo. The chains of your city are preselected the first time. Nothing is downloaded unless you tick it, and the pack is not installed with the integration.
+
+The pack is also published as **`ceny-paliv-logos.zip`** in each [release](https://github.com/donthedandy/ha-ceny-paliv/releases): unzip it into `<config>/ceny_paliv_logos/` if you prefer to do it by hand (restart or reload the integration to pick up new files). You can drop your own square PNG there too, named after the chain in lower case, without accents, with dashes for spaces (`eurobit.png`, `robin-oil.png`): such files are used and never deleted. To use files from another folder, set `logo_path: /local/logos/` on the card (files named like the chain, for example `/local/logos/orlen.png`).
+
+The logos are trademarks of their owners, used only to identify the stations; this project is not affiliated with them. The sources and the removal policy are in [logos/SOURCES.md](logos/SOURCES.md).
+
+## 5. Without the card: standard cards
 
 Every sensor is named after what it currently shows (for example `1 · Orlen – Bratri Stefanu 69`), so any standard card displays the station without a template. The names follow the ranking and update at each refresh; the entity ids never change.
 
