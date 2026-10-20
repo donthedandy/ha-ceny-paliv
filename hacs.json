@@ -1,6 +1,8 @@
 {
-  "name": "mBenzin – ceny paliv",
-  "country": ["CZ"],
+  "name": "Ceny paliv · Czech fuel prices",
+  "country": [
+    "CZ"
+  ],
   "homeassistant": "2025.1.0",
   "render_readme": true
 }

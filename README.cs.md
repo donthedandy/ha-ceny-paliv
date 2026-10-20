@@ -1,4 +1,6 @@
-# ⛽ mBenzin – ceny paliv v Home Assistantu
+<p align="center"><img src="docs/logo.png" alt="Ceny paliv" width="420"></p>
+
+# ⛽ Ceny paliv – ceny paliv v Home Assistantu
 
 [English](README.md) · **Česky**
 
@@ -6,14 +8,14 @@ Integrace pro HACS, která v Home Assistantu ukazuje ceny paliv z [mBenzin.cz](h
 
 ![Dashboard](docs/screenshot.webp)
 
-> Neoficiální projekt, nijak nesouvisí s mBenzin.cz. Zdroj dat: [mBenzin.cz](https://www.mbenzin.cz).
+> **Ceny paliv** je nezávislý projekt. Ceny pocházejí z [mBenzin.cz](https://www.mbenzin.cz); projekt nevytváří, nepodporuje ani neschvaluje mBenzin.cz.
 
 ## Co umí
 
 - Vyberete si **město**, **jedno či více paliv** (třeba Natural 95 a LPG pro vůz na dvě paliva) a pro každé palivo **oblíbenou stanici**.
 - Pro každé palivo **5 nejlevnějších stanic ve městě** (jen z vašeho města, nikoli z celého kraje), odkaz na Google Maps a **mapu s cenami**.
 - U oblíbené stanice: aktuální cena, **trendy oproti 1, 2, 7, 14 a 30 dnům**, pořadí ve městě a dlouhodobá statistika (graf za 30 dní).
-- Hotová **karta pro dashboard** (`mbenzin-card`) přímo v integraci – přidáte ji z nabídky karet, bez kopírování YAML – s volbou jazyka **čeština / angličtina**.
+- Hotová **karta pro dashboard** (`ceny-paliv-card`) přímo v integraci – přidáte ji z nabídky karet, bez kopírování YAML – s volbou jazyka **čeština / angličtina**.
 - Zastaralé ceny se skrývají: u benzínu a nafty cena starší než včerejšek, u CNG starší než 3 dny, u LPG a AdBlue starší než 7 dní.
 
 ## 1. Získání přístupového klíče (zdarma)
@@ -32,9 +34,9 @@ Co je dobré vědět:
 
 ## 2. Instalace přes HACS
 
-1. V HACS otevřete menu **⋮ → Vlastní repozitáře** a přidejte `https://github.com/donthedandy/ha-mbenzin-ceny-paliv` s kategorií **Integrace** (Integration).
-2. Vyhledejte **mBenzin**, stáhněte ho a **restartujte** Home Assistant.
-3. Otevřete **Nastavení → Zařízení a služby → Přidat integraci → mBenzin** a postupně zadejte:
+1. V HACS otevřete menu **⋮ → Vlastní repozitáře** a přidejte `https://github.com/donthedandy/ha-ceny-paliv` s kategorií **Integrace** (Integration).
+2. Vyhledejte **Ceny paliv**, stáhněte ho a **restartujte** Home Assistant.
+3. Otevřete **Nastavení → Zařízení a služby → Přidat integraci → Ceny paliv** a postupně zadejte:
    1. **přístupový klíč**,
    2. **město** (výběr ze seznamu),
    3. **paliva** (jedno nebo více) a **jazyk** textů v dashboardu,
@@ -50,23 +52,23 @@ Pro každé palivo `<palivo>` (`n95`, `benzinplus`, `diesel`, `dieselplus`, `lpg
 
 | Entita | Co obsahuje |
 |---|---|
-| `sensor.mbenzin_<palivo>_top5` | cena nejlevnější stanice; v atributech je všech 5 stanic (název, adresa, cena, souřadnice, odkaz na Google Maps, trendy…) a texty v zvoleném jazyce |
-| `sensor.mbenzin_<palivo>_home` | cena u vaší oblíbené stanice (jen pokud jste nějakou vybrali), trendy, pořadí, statistika |
-| `sensor.mbenzin_<palivo>_1` … `_5` | 5 nejlevnějších stanic se zeměpisnou šířkou a délkou pro kartu mapy |
+| `sensor.ceny_paliv_<palivo>_top5` | cena nejlevnější stanice; v atributech je všech 5 stanic (název, adresa, cena, souřadnice, odkaz na Google Maps, trendy…) a texty v zvoleném jazyce |
+| `sensor.ceny_paliv_<palivo>_home` | cena u vaší oblíbené stanice (jen pokud jste nějakou vybrali), trendy, pořadí, statistika |
+| `sensor.ceny_paliv_<palivo>_1` … `_5` | 5 nejlevnějších stanic se zeměpisnou šířkou a délkou pro kartu mapy |
 
 Ceny se obnovují každých 6 hodin. Pokud se aktualizace nepovede (třeba kvůli chybě 429), zůstanou zachována poslední data a atribut `fetch_error` uvede důvod.
 
 ## 3. Karta pro dashboard (je součástí, nic dalšího se neinstaluje)
 
-Integrace obsahuje vlastní kartu **`mbenzin-card`**. Po instalaci (a restartu) stačí:
+Integrace obsahuje vlastní kartu **`ceny-paliv-card`**. Po instalaci (a restartu) stačí:
 
-1. Otevřít dashboard → **Upravit** → **Přidat kartu** → vyhledat **mBenzin**.
+1. Otevřít dashboard → **Upravit** → **Přidat kartu** → vyhledat **Ceny paliv**.
 2. Vybrat **palivo** (editor nabídne paliva, která jste nastavili). Hotovo.
 
 Nebo v YAML:
 
 ```yaml
-type: custom:mbenzin-card
+type: custom:ceny-paliv-card
 fuel: n95            # n95 | benzinplus | diesel | dieselplus | lpg | cng | adblue
 ```
 
@@ -87,7 +89,7 @@ Upozornění na změnu ceny na telefonu: viz `examples/price_alert.yaml`.
 ## Poznámky
 
 - **E10** mBenzin nerozlišuje: u Natural 95 jde o cenu pro všechny 95oktanové benzíny.
-- Entity se jmenují `sensor.mbenzin_<palivo>_…`. Druhé město by dostalo příponu `_2`.
+- Entity se jmenují `sensor.ceny_paliv_<palivo>_…`. Druhé město by dostalo příponu `_2`.
 - Denní záznam cen potřebný pro trendy ukládá Home Assistant a postupně se plní (hvězdička v pohledu označuje trend z kratší historie).
 
 ## Licence

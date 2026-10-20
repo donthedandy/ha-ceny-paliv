@@ -1,4 +1,6 @@
-# ⛽ mBenzin – Czech fuel prices for Home Assistant
+<p align="center"><img src="docs/logo.png" alt="Ceny paliv" width="420"></p>
+
+# ⛽ Ceny paliv – Czech fuel prices for Home Assistant
 
 **English** · [Česky](README.cs.md)
 
@@ -6,14 +8,14 @@ A HACS integration that shows the cheapest stations of **your city** for the fue
 
 ![Dashboard](docs/screenshot.webp)
 
-> Unofficial project, not affiliated with mBenzin.cz. Data: [mBenzin.cz](https://www.mbenzin.cz).
+> **Ceny paliv** (Czech for “fuel prices”) is an independent project. The prices come from [mBenzin.cz](https://www.mbenzin.cz); this project is not made, endorsed or supported by mBenzin.cz.
 
 ## Features
 
 - Pick your **city**, one or **several fuels** (e.g. Natural 95 + LPG for a dual-fuel car) and a **favourite station per fuel**
 - Per fuel: the **top 5 cheapest** stations in the city (only that city, not the region), with a Google Maps link, and a **map**
 - Favourite station: price, **trends vs 1/2/7/14/30 days ago**, rank in town, long-term statistics (the 30-day graph)
-- A ready-made **dashboard card** (`mbenzin-card`) shipped with the integration — add it from the card picker, no YAML to copy — in **English or Czech** (your choice during setup)
+- A ready-made **dashboard card** (`ceny-paliv-card`) shipped with the integration — add it from the card picker, no YAML to copy — in **English or Czech** (your choice during setup)
 - Stale prices are hidden (older than yesterday for petrol/diesel, 3 days for CNG, 7 days for LPG/AdBlue)
 
 ## 1. Get your access key (free)
@@ -26,9 +28,9 @@ mBenzin blocks plain scraping with a browser check, but they give a **personal a
 
 ## 2. Install with HACS
 
-1. HACS → ⋮ → **Custom repositories** → add `https://github.com/donthedandy/ha-mbenzin-ceny-paliv`, category **Integration**.
-2. Search for **mBenzin**, download it, **restart** Home Assistant.
-3. Settings → Devices & services → **Add integration** → **mBenzin**, then:
+1. HACS → ⋮ → **Custom repositories** → add `https://github.com/donthedandy/ha-ceny-paliv`, category **Integration**.
+2. Search for **Ceny paliv**, download it, **restart** Home Assistant.
+3. Settings → Devices & services → **Add integration** → **Ceny paliv**, then:
    1. paste your **access key**
    2. choose your **city**
    3. choose your **fuel(s)** and the **language** of the dashboard texts (English / Čeština)
@@ -44,23 +46,23 @@ For each fuel `<fuel>` (`n95`, `benzinplus`, `diesel`, `dieselplus`, `lpg`, `cng
 
 | Entity | What |
 |---|---|
-| `sensor.mbenzin_<fuel>_top5` | price of the cheapest station; attributes: the 5 stations (name, address, price, coordinates, Google Maps link, trends…) |
-| `sensor.mbenzin_<fuel>_home` | price at your favourite station (only if you chose one); trends, rank, statistics |
-| `sensor.mbenzin_<fuel>_1` … `_5` | the 5 cheapest stations, with latitude/longitude for the map card |
+| `sensor.ceny_paliv_<fuel>_top5` | price of the cheapest station; attributes: the 5 stations (name, address, price, coordinates, Google Maps link, trends…) |
+| `sensor.ceny_paliv_<fuel>_home` | price at your favourite station (only if you chose one); trends, rank, statistics |
+| `sensor.ceny_paliv_<fuel>_1` … `_5` | the 5 cheapest stations, with latitude/longitude for the map card |
 
 Prices refresh every 6 hours. If a refresh fails (for example HTTP 429) the last data is kept and the attribute `fetch_error` says why.
 
 ## 3. The dashboard card (included, nothing else to install)
 
-The integration ships its own card, **`mbenzin-card`**. After installing (and restarting) just:
+The integration ships its own card, **`ceny-paliv-card`**. After installing (and restarting) just:
 
-1. Open a dashboard → **Edit** → **Add card** → search **mBenzin**.
+1. Open a dashboard → **Edit** → **Add card** → search **Ceny paliv**.
 2. Pick the **fuel** (the visual editor lists the fuels you set up). Done.
 
 Or in YAML:
 
 ```yaml
-type: custom:mbenzin-card
+type: custom:ceny-paliv-card
 fuel: n95            # n95 | benzinplus | diesel | dieselplus | lpg | cng | adblue
 ```
 
@@ -81,12 +83,12 @@ For a notification when your station's price changes, see `examples/price_alert.
 ## Notes
 
 - **E10** is not distinguished by mBenzin: "Natural 95" is the price shown for 95-octane petrol.
-- Entity ids are `sensor.mbenzin_<fuel>_…`. A second city would get a `_2` suffix.
+- Entity ids are `sensor.ceny_paliv_<fuel>_…`. A second city would get a `_2` suffix.
 - The daily price log used for the trends is stored by Home Assistant and fills up over time (a `*` in the view marks a trend computed from a shorter history).
 
 ## 🇨🇿 Česky
 
-Úplný český popis (získání klíče, instalace přes HACS, senzory, dashboard) najdete v **[README.cs.md](README.cs.md)**. Stručně: klíč zdarma na reklama@mbenzin.cz, HACS → Vlastní repozitáře → `https://github.com/donthedandy/ha-mbenzin-ceny-paliv` (Integrace) → restart → Přidat integraci **mBenzin**.
+Úplný český popis (získání klíče, instalace přes HACS, senzory, dashboard) najdete v **[README.cs.md](README.cs.md)**. Stručně: klíč zdarma na reklama@mbenzin.cz, HACS → Vlastní repozitáře → `https://github.com/donthedandy/ha-ceny-paliv` (Integrace) → restart → Přidat integraci **Ceny paliv**.
 
 ## License
 
