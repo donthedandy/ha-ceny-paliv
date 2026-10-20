@@ -79,6 +79,19 @@ def pretty(slug: str) -> str:
     return slug.replace("-", " ")
 
 
+def street_of(name: str, address: str) -> str:
+    """The address text without the leading station name ('Bratri Stefanu 69')."""
+    if address.lower().startswith(name.lower()):
+        return address[len(name):].strip()
+    return address
+
+
+def station_title(name: str, address: str) -> str:
+    """'Orlen – Bratri Stefanu 69' from the station name and its address text."""
+    street = street_of(name, address)
+    return f"{name} – {street}" if street else name
+
+
 def city_options(markers: list[dict[str, Any]]) -> list[dict[str, str]]:
     """Cities that have at least one station, for a select box."""
     slugs = {c for m in markers if (c := city_of(m))}
@@ -92,10 +105,7 @@ def station_options(markers: list[dict[str, Any]], city: str) -> list[dict[str, 
         if city_of(m) != city:
             continue
         slug = station_slug(m)
-        address = pretty(slug)
-        if address.lower().startswith(m["name"].lower()):
-            address = address[len(m["name"]):].strip()
-        out.append({"value": slug, "label": f"{m['name']} – {address}" if address else m["name"]})
+        out.append({"value": slug, "label": station_title(m["name"], pretty(slug))})
     return sorted(out, key=lambda o: o["label"].casefold())
 
 
@@ -169,6 +179,7 @@ def build_payload(
             "rank": rank,
             "name": m["name"],
             "address": pretty(slug),
+            "street": street_of(m["name"], pretty(slug)),
             "price": m["price"],
             "lat": m["lat"],
             "lng": m["lng"],

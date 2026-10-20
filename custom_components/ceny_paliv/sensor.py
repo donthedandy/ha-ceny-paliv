@@ -4,6 +4,9 @@ Entity ids are predictable (used by the dashboard views):
   sensor.ceny_paliv_<fuel>_top5   cheapest price, all details in attributes
   sensor.ceny_paliv_<fuel>_home   price at your favourite station (if one is chosen)
   sensor.ceny_paliv_<fuel>_1 .. 5 the 5 cheapest stations, with latitude/longitude for the map card
+
+The entity ids never change, but the displayed names do: the position and favourite sensors are named after the
+station they currently describe ("1 · Orlen – Bratri Stefanu 69"), so standard cards show it without any template.
 """
 from __future__ import annotations
 
@@ -15,7 +18,7 @@ from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import pretty
+from .api import pretty, station_title
 from .const import CONF_CITY, DOMAIN, FUELS, TOP
 from .coordinator import CenyPalivConfigEntry, CenyPalivCoordinator
 
@@ -73,12 +76,23 @@ class CenyPalivEntity(CoordinatorEntity[CenyPalivCoordinator], SensorEntity):
     def _payload(self) -> dict[str, Any]:
         return (self.coordinator.data or {}).get(self._fuel) or {}
 
+    @property
+    def _label(self) -> str:
+        return self._payload.get("fuel_label") or FUELS.get(self._fuel, (self._fuel,))[0]
+
+    def _word(self, key: str, default: str) -> str:
+        return (self._payload.get("labels") or {}).get(key, default)
+
 
 class CenyPalivTop5Sensor(CenyPalivEntity):
     _attr_icon = "mdi:gas-station"
 
     def __init__(self, coordinator, entry, fuel) -> None:
         super().__init__(coordinator, entry, fuel, "top5")
+
+    @property
+    def name(self) -> str:
+        return f"{self._label} · {self._word('name_cheapest', 'cheapest')}"
 
     @property
     def native_value(self) -> float | None:
@@ -100,6 +114,13 @@ class CenyPalivHomeSensor(CenyPalivEntity):
 
     def __init__(self, coordinator, entry, fuel) -> None:
         super().__init__(coordinator, entry, fuel, "home")
+
+    @property
+    def name(self) -> str:
+        home = self._payload.get("home")
+        if home:
+            return station_title(home["name"], home["address"])
+        return f"{self._label} · {self._word('name_home', 'favourite station')}"
 
     @property
     def _home(self) -> dict[str, Any] | None:
@@ -130,6 +151,13 @@ class CenyPalivPositionSensor(CenyPalivEntity):
     def __init__(self, coordinator, entry, fuel, index: int) -> None:
         super().__init__(coordinator, entry, fuel, str(index + 1))
         self._index = index
+
+    @property
+    def name(self) -> str:
+        s = self._station
+        if s:
+            return f"{self._index + 1} · {station_title(s['name'], s['address'])}"
+        return f"{self._label} · {self._index + 1}"
 
     @property
     def _station(self) -> dict[str, Any] | None:
