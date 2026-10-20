@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/logo.png" alt="Ceny paliv" width="420"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/logo.png" alt="Ceny paliv" width="420"></p>
 
 # ⛽ Ceny paliv – ceny paliv v Home Assistantu
 
