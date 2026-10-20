@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Přístupový klíč mBenzin",
+        "description": "Zadejte svůj osobní klíč mBenzin. Uživatelům Home Assistantu ho mBenzin vystavuje zdarma: napište na reklama@mbenzin.cz, k čemu ceny používáte, o které město/stanice jde a jak často je načítáte. Klíč nikomu nesdílejte.",
+        "data": { "key": "Přístupový klíč" }
+      },
+      "city": {
+        "title": "Město",
+        "description": "Zobrazí se jen stanice z tohoto města.",
+        "data": { "city": "Město" }
+      },
+      "fuels": {
+        "title": "Paliva",
+        "description": "Vyberte jedno nebo více paliv (např. Natural 95 + LPG pro vůz na dvě paliva). Každé palivo má vlastní senzory.",
+        "data": { "fuels": "Paliva" }
+      },
+      "station": {
+        "title": "Oblíbená stanice – {fuel}",
+        "description": "Vaše stanice v městě {city} pro palivo {fuel}. Má vlastní senzor s historií a trendy. Nechte „—“, pokud žádnou nechcete.",
+        "data": { "station": "Oblíbená stanice" }
+      }
+    },
+    "error": {
+      "invalid_auth": "mBenzin klíč nepřijal.",
+      "cannot_connect": "Nelze se spojit s mBenzin.cz.",
+      "rate_limited": "mBenzin vrátil HTTP 429 (limit 20 stránek za hodinu). Zkuste to později.",
+      "no_fuel": "Vyberte alespoň jedno palivo."
+    },
+    "abort": { "already_configured": "Toto město je již nastaveno." }
+  },
+  "options": {
+    "step": {
+      "fuels": {
+        "title": "Paliva",
+        "description": "Vyberte jedno nebo více paliv. Každé palivo má vlastní senzory.",
+        "data": { "fuels": "Paliva" }
+      },
+      "station": {
+        "title": "Oblíbená stanice – {fuel}",
+        "description": "Vaše stanice v městě {city} pro palivo {fuel}. Nechte „—“, pokud žádnou nechcete.",
+        "data": { "station": "Oblíbená stanice" }
+      }
+    },
+    "error": {
+      "invalid_auth": "mBenzin klíč nepřijal.",
+      "cannot_connect": "Nelze se spojit s mBenzin.cz.",
+      "rate_limited": "mBenzin vrátil HTTP 429 (limit 20 stránek za hodinu). Zkuste to později.",
+      "no_fuel": "Vyberte alespoň jedno palivo."
+    }
+  }
+}

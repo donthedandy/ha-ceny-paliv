@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "mBenzin access key",
+        "description": "Enter your personal mBenzin key. mBenzin gives it free to Home Assistant users: e-mail reklama@mbenzin.cz, say what the prices are for, which city/stations and how often you load them. Never share the key.",
+        "data": { "key": "Access key" }
+      },
+      "city": {
+        "title": "City",
+        "description": "Only the stations of this city are shown.",
+        "data": { "city": "City" }
+      },
+      "fuels": {
+        "title": "Fuels",
+        "description": "Pick one or more fuels (for example Natural 95 + LPG for a dual-fuel car). Each fuel makes its own sensors.",
+        "data": { "fuels": "Fuels" }
+      },
+      "station": {
+        "title": "Favourite station – {fuel}",
+        "description": "Your usual station in {city} for {fuel}. It gets its own sensor with price history and trends. Leave \"—\" for none.",
+        "data": { "station": "Favourite station" }
+      }
+    },
+    "error": {
+      "invalid_auth": "The key was not accepted by mBenzin.",
+      "cannot_connect": "Cannot reach mBenzin.cz.",
+      "rate_limited": "mBenzin returned HTTP 429 (limit of 20 pages per hour). Try again later.",
+      "no_fuel": "Pick at least one fuel."
+    },
+    "abort": { "already_configured": "This city is already configured." }
+  },
+  "options": {
+    "step": {
+      "fuels": {
+        "title": "Fuels",
+        "description": "Pick one or more fuels. Each fuel makes its own sensors.",
+        "data": { "fuels": "Fuels" }
+      },
+      "station": {
+        "title": "Favourite station – {fuel}",
+        "description": "Your usual station in {city} for {fuel}. Leave \"—\" for none.",
+        "data": { "station": "Favourite station" }
+      }
+    },
+    "error": {
+      "invalid_auth": "The key was not accepted by mBenzin.",
+      "cannot_connect": "Cannot reach mBenzin.cz.",
+      "rate_limited": "mBenzin returned HTTP 429 (limit of 20 pages per hour). Try again later.",
+      "no_fuel": "Pick at least one fuel."
+    }
+  }
+}
