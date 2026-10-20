@@ -2,7 +2,7 @@
 # Paste into automations.yaml (or a package). Replace:
 #   - sensor.mbenzin_n95_home          -> the "home" sensor of the fuel you follow (n95, diesel, lpg, cng)
 #   - notify.mobile_app_YOUR_PHONE     -> your own notify service
-#   - /lovelace/fuel_n95               -> the path of your fuel view (the "path:" line of the dashboard file)
+#   - /lovelace/fuel_n95               -> the URL path of the dashboard view that holds the card
 automation:
   - id: mbenzin_price_alert_n95
     alias: Fuel — home station price change alert
