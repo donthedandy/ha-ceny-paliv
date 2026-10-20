@@ -35,6 +35,13 @@
         "data": {
           "station": "Oblíbená stanice"
         }
+      },
+      "logos": {
+        "title": "Loga čerpacích stanic (volitelné)",
+        "description": "Zaškrtněte řetězce, jejichž loga chcete mít v kartě. Stáhnou se z balíčku log Ceny paliv na GitHubu do konfigurační složky Home Assistantu (každé má jen pár KB). Řetězce z vašeho města jsou předvybrané. Loga jsou ochranné známky svých majitelů a slouží jen k označení stanic; projekt s nimi nijak nesouvisí. Pokud nezaškrtnete nic, karta použije barevné odznaky s iniciálami.",
+        "data": {
+          "logos": "Loga"
+        }
       }
     },
     "error": {
@@ -65,6 +72,13 @@
         "description": "Vaše nejčastější čerpací stanice v městě {city} pro palivo {fuel}. Pokud žádnou nechcete, ponechte „—“.",
         "data": {
           "station": "Oblíbená stanice"
+        }
+      },
+      "logos": {
+        "title": "Loga čerpacích stanic (volitelné)",
+        "description": "Zaškrtněte řetězce, jejichž loga chcete mít v kartě. Stáhnou se z balíčku log Ceny paliv na GitHubu do konfigurační složky Home Assistantu (každé má jen pár KB). Řetězce z vašeho města jsou předvybrané. Loga jsou ochranné známky svých majitelů a slouží jen k označení stanic; projekt s nimi nijak nesouvisí. Pokud nezaškrtnete nic, karta použije barevné odznaky s iniciálami.",
+        "data": {
+          "logos": "Loga"
         }
       }
     },

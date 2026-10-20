@@ -35,6 +35,13 @@
         "data": {
           "station": "Favourite station"
         }
+      },
+      "logos": {
+        "title": "Station logos (optional)",
+        "description": "Tick the chains whose logos you want on the card. They are downloaded from the Ceny paliv logo pack on GitHub into your Home Assistant config folder (a few KB each). The chains of your city are preselected. Logos are trademarks of their owners and are shown only to identify the stations; this project is not affiliated with them. Untick everything to use letter badges instead.",
+        "data": {
+          "logos": "Logos"
+        }
       }
     },
     "error": {
@@ -65,6 +72,13 @@
         "description": "Your usual station in {city} for {fuel}. Leave \"—\" for none.",
         "data": {
           "station": "Favourite station"
+        }
+      },
+      "logos": {
+        "title": "Station logos (optional)",
+        "description": "Tick the chains whose logos you want on the card. They are downloaded from the Ceny paliv logo pack on GitHub into your Home Assistant config folder (a few KB each). The chains of your city are preselected. Logos are trademarks of their owners and are shown only to identify the stations; this project is not affiliated with them. Untick everything to use letter badges instead.",
+        "data": {
+          "logos": "Logos"
         }
       }
     },
