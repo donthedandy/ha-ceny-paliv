@@ -14,7 +14,7 @@
  *
  * Texts come from the language chosen in the integration setup (attribute `labels` of the top5 sensor).
  */
-const MBENZIN_CARD_VERSION = '0.2.0';
+const MBENZIN_CARD_VERSION = '0.2.1';
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -42,7 +42,8 @@ class MBenzinCard extends HTMLElement {
   setConfig(config) {
     if (!config || !config.fuel) throw new Error('mbenzin-card: set "fuel", for example "n95"');
     this._config = Object.assign({ show_map: true, show_graph: true, logos: [], logo_path: '/local/' }, config);
-    this._pre = `sensor.mbenzin_${config.fuel}_`;
+    this._ids = null;
+    this._scanAt = 0;
     this._sig = '';
     this._children = null;
     this._build();
@@ -51,8 +52,9 @@ class MBenzinCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._config) return;
-    const top = hass.states[this._pre + 'top5'];
-    const home = hass.states[this._pre + 'home'];
+    this._ids = this._resolve(hass);
+    const top = hass.states[this._ids.top5];
+    const home = hass.states[this._ids.home];
     const sig = [top && top.last_updated, home && home.last_updated, top && top.state, home && home.state].join('|');
     if (sig !== this._sig) {
       this._sig = sig;
@@ -61,12 +63,52 @@ class MBenzinCard extends HTMLElement {
     if (this._children) this._children.forEach((c) => { c.hass = hass; });
   }
 
+  // Find this fuel's sensors by their attributes, so the card does not depend on how Home Assistant names the
+  // entities (device name prefix, renamed entities, second city...). Older installs without the attributes are
+  // matched on the entity id suffix (..._<fuel>_top5, _home, _1 .. _5).
+  _resolve(hass) {
+    const c = this._ids;
+    const valid = c && c.top5 && hass.states[c.top5] && (!c.home || hass.states[c.home]) && c.pos.every((id) => !id || hass.states[id]);
+    const now = Date.now();
+    if (valid && (c.home || now - this._scanAt < 10000)) return c;
+    this._scanAt = now;
+    const fuel = this._config.fuel;
+    const ids = { top5: null, home: null, pos: [] };
+    for (const id of Object.keys(hass.states)) {
+      if (!id.startsWith('sensor.mbenzin_')) continue;
+      const a = hass.states[id].attributes || {};
+      let role = null; let idx = 0;
+      if (a.mbenzin_fuel) {
+        if (a.mbenzin_fuel !== fuel) continue;
+        role = a.mbenzin_role; idx = a.mbenzin_index || 0;
+      } else {
+        const m = id.match(/_([a-z0-9]+)_(top5|home|[1-5])$/);
+        if (!m || m[1] !== fuel) continue;
+        role = m[2] === 'top5' ? 'top5' : m[2] === 'home' ? 'home' : 'position'; idx = /^\d$/.test(m[2]) ? Number(m[2]) : 0;
+      }
+      if (role === 'top5') ids.top5 = id;
+      else if (role === 'home') ids.home = id;
+      else if (role === 'position' && idx >= 1 && idx <= 5) ids.pos[idx - 1] = id;
+    }
+    return ids;
+  }
+
   getCardSize() { return 12; }
   getGridOptions() { return { columns: 12, min_columns: 6 }; }
   static getConfigElement() { return document.createElement('mbenzin-card-editor'); }
+  static fuels(hass) {
+    const out = [];
+    for (const [id, st] of Object.entries((hass && hass.states) || {})) {
+      if (!id.startsWith('sensor.mbenzin_')) continue;
+      const a = st.attributes || {};
+      const isTop = a.mbenzin_role === 'top5' || (!a.mbenzin_role && /_top5$/.test(id) && a.fuel);
+      if (isTop && a.fuel && !out.some((o) => o.value === a.fuel)) out.push({ value: a.fuel, label: a.fuel_label || a.fuel });
+    }
+    return out;
+  }
   static getStubConfig(hass) {
-    const id = Object.keys((hass && hass.states) || {}).find((k) => /^sensor\.mbenzin_[a-z0-9]+_top5$/.test(k));
-    return { type: 'custom:mbenzin-card', fuel: id ? id.split('_')[1] : 'n95' };
+    const found = MBenzinCard.fuels(hass)[0];
+    return { type: 'custom:mbenzin-card', fuel: found ? found.value : 'n95' };
   }
 
   // ---------------------------------------------------------------- skeleton
@@ -86,18 +128,18 @@ class MBenzinCard extends HTMLElement {
     const extra = this.shadowRoot.getElementById('extra');
     const helpers = window.loadCardHelpers ? await window.loadCardHelpers() : null;
     if (!helpers) return;
-    const hasHome = !!this._hass.states[this._pre + 'home'];
+    const hasHome = !!this._hass.states[this._ids.home];
     const kids = [];
     if (c.show_map) {
-      const entities = [1, 2, 3, 4, 5].map((i) => ({ entity: `${this._pre}${i}`, label_mode: 'state', focus: true }));
-      if (hasHome) entities.push({ entity: this._pre + 'home', label_mode: 'state', focus: true });
+      const entities = this._ids.pos.filter(Boolean).map((id) => ({ entity: id, label_mode: 'state', focus: true }));
+      if (hasHome) entities.push({ entity: this._ids.home, label_mode: 'state', focus: true });
       kids.push({ cls: 'map', config: { type: 'map', theme_mode: 'dark', auto_fit: true, default_zoom: 12, hours_to_show: 0, entities } });
     }
     if (c.show_graph && hasHome) {
       kids.push({
         cls: 'graph',
         config: {
-          type: 'statistics-graph', title: '30 d', entities: [this._pre + 'home'], days_to_show: 30, period: 'day',
+          type: 'statistics-graph', title: '30 d', entities: [this._ids.home], days_to_show: 30, period: 'day',
           chart_type: 'line', stat_types: ['mean', 'min', 'max'],
         },
       });
@@ -116,7 +158,7 @@ class MBenzinCard extends HTMLElement {
 
   // ---------------------------------------------------------------- helpers
   _labels() {
-    const top = this._hass.states[this._pre + 'top5'];
+    const top = this._hass.states[this._ids.top5];
     return (top && top.attributes && top.attributes.labels) || {};
   }
 
@@ -152,10 +194,10 @@ class MBenzinCard extends HTMLElement {
   // ---------------------------------------------------------------- rendering
   _renderTexts() {
     const hass = this._hass;
-    const top = hass.states[this._pre + 'top5'];
+    const top = hass.states[this._ids.top5];
     const host = this.shadowRoot.getElementById('texts');
     if (!top || top.state === 'unavailable') {
-      host.innerHTML = `<div class="card" style="color:#9aa1ad;font-size:14px">mBenzin: ${esc(this._pre + 'top5')} — unavailable</div>`;
+      host.innerHTML = `<div class="card" style="color:#9aa1ad;font-size:14px">mBenzin (${esc(this._config.fuel)}): sensor not found or unavailable — is the fuel set up in the integration?</div>`;
       return;
     }
     host.innerHTML = `<div class="stack">${this._homeHtml()}${this._listHtml()}</div>`;
@@ -163,7 +205,7 @@ class MBenzinCard extends HTMLElement {
   }
 
   _homeHtml() {
-    const e = this._hass.states[this._pre + 'home'];
+    const e = this._hass.states[this._ids.home];
     if (!e) return '';
     const T = (k, v) => this._T(k, v);
     const LOC = this._labels().locale || 'en-GB';
@@ -202,7 +244,7 @@ class MBenzinCard extends HTMLElement {
       ? `<img src="${esc(this._config.logo_path)}${esc(chain0)}.png?v=1" onload="this.previousElementSibling.style.display='none'" onerror="this.style.display='none'" style="position:absolute;left:0;top:0;width:44px;height:44px;border-radius:999px;display:block">`
       : '';
     const logo = `<div style="position:relative;width:44px;height:44px;flex-shrink:0">${iconBox}${logoImg}</div>`;
-    return `<div class="card home" data-more-info="${esc(this._pre + 'home')}">
+    return `<div class="card home" data-more-info="${esc(this._ids.home)}">
       <div style="display:flex;flex-direction:column;gap:12px;width:100%;text-align:left">
         <div style="display:flex;align-items:center;gap:12px">${logo}
           <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;min-width:0">
@@ -221,7 +263,7 @@ class MBenzinCard extends HTMLElement {
   }
 
   _listHtml() {
-    const S = this._hass.states[this._pre + 'top5'];
+    const S = this._hass.states[this._ids.top5];
     const at = S.attributes;
     const T = (k, v) => this._T(k, v);
     const LOC = this._labels().locale || 'en-GB';
@@ -281,7 +323,7 @@ class MBenzinCard extends HTMLElement {
     lines.push(`<span style="font-size:11px;color:#9aa1ad">${esc(T('arrows'))} · <span style="color:#5fd39a">▼ ${esc(T('down'))}</span> · <span style="color:#f5c26b">— ${esc(T('stable'))}</span> · <span style="color:#ff7a6b">▲ ${esc(T('up'))}</span> · ${esc(T('longpress'))}</span>`);
     lines.push(`<span style="font-size:11px;color:#5b6270">mBenzin.cz · ${esc(at.fuel_label || '')}${at.fuel === 'n95' ? ' ' + esc(T('e10_note')) : ''} · ${esc(T('tap_station'))}</span>`);
     const foot = `<div style="display:flex;flex-direction:column;gap:3px;text-align:left;border-top:1px solid #23272f;padding-top:12px">${lines.join('')}</div>`;
-    return `<div class="card" data-more-info="${esc(this._pre + (this._hass.states[this._pre + 'home'] ? 'home' : 'top5'))}">${head}${rows}${foot}</div>`;
+    return `<div class="card" data-more-info="${esc(this._ids.home || this._ids.top5)}">${head}${rows}${foot}</div>`;
   }
 
   // ---------------------------------------------------------------- interaction
@@ -297,7 +339,7 @@ class MBenzinCard extends HTMLElement {
     if (t && t.dataset.maps) {
       this._timer = setTimeout(() => {
         this._long = true;
-        this._moreInfo(this._pre + (this._hass.states[this._pre + 'home'] ? 'home' : 'top5'));
+        this._moreInfo(this._ids.home || this._ids.top5);
       }, 550);
     }
   }
@@ -336,10 +378,7 @@ class MBenzinCardEditor extends HTMLElement {
       this.appendChild(this._form);
     }
     const lang = ((this._hass.language || 'en').split('-')[0] in EDITOR_TEXT) ? this._hass.language.split('-')[0] : 'en';
-    const options = Object.keys(this._hass.states)
-      .map((id) => id.match(/^sensor\.mbenzin_([a-z0-9]+)_top5$/))
-      .filter(Boolean)
-      .map((m) => ({ value: m[1], label: (this._hass.states[m[0]].attributes.fuel_label || m[1]) }));
+    const options = MBenzinCard.fuels(this._hass);
     this._form.hass = this._hass;
     this._form.data = Object.assign({ show_map: true, show_graph: true }, this._config);
     this._form.schema = [
