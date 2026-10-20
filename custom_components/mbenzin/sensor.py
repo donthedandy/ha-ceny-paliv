@@ -60,6 +60,7 @@ class MBenzinEntity(CoordinatorEntity[MBenzinCoordinator], SensorEntity):
         self._fuel = fuel
         self._attr_unique_id = f"{entry.entry_id}_{fuel}_{suffix}"
         self._attr_name = f"mBenzin {fuel} {suffix}"
+        self.entity_id = f"sensor.mbenzin_{fuel}_{suffix}"  # suggestion for new installs
         self._attr_native_unit_of_measurement = FUELS.get(fuel, (fuel, "Kč/l"))[1]
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
@@ -86,7 +87,9 @@ class MBenzinTop5Sensor(MBenzinEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return {k: self._payload.get(k) for k in TOP_ATTRIBUTES}
+        attrs = {k: self._payload.get(k) for k in TOP_ATTRIBUTES}
+        attrs.update(mbenzin_fuel=self._fuel, mbenzin_role="top5")
+        return attrs
 
 
 class MBenzinHomeSensor(MBenzinEntity):
@@ -115,6 +118,7 @@ class MBenzinHomeSensor(MBenzinEntity):
         home = self._home or {}
         attrs = {"station": home.get("address"), "latitude": home.get("lat"), "longitude": home.get("lng")}
         attrs.update({k: home.get(k) for k in HOME_ATTRIBUTES})
+        attrs.update(mbenzin_fuel=self._fuel, mbenzin_role="home")
         return attrs
 
 
@@ -143,11 +147,12 @@ class MBenzinPositionSensor(MBenzinEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         s = self._station
-        if not s:
-            return {}
-        # the favourite station is drawn by its own sensor on the map: no coordinates here
-        return {
-            "station": s["address"],
-            "latitude": None if s["home"] else s["lat"],
-            "longitude": None if s["home"] else s["lng"],
-        }
+        attrs: dict[str, Any] = {"mbenzin_fuel": self._fuel, "mbenzin_role": "position", "mbenzin_index": self._index + 1}
+        if s:
+            # the favourite station is drawn by its own sensor on the map: no coordinates here
+            attrs.update(
+                station=s["address"],
+                latitude=None if s["home"] else s["lat"],
+                longitude=None if s["home"] else s["lng"],
+            )
+        return attrs
