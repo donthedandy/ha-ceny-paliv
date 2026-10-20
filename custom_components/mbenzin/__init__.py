@@ -1,11 +1,25 @@
 """mBenzin.cz fuel prices."""
 from __future__ import annotations
 
-from homeassistant.core import HomeAssistant
+from pathlib import Path
 
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import ConfigType
+
+from .const import CARD_URL, CARD_VERSION
 from .coordinator import MBenzinConfigEntry, MBenzinCoordinator
 
 PLATFORMS = ["sensor"]
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Serve the dashboard card (custom:mbenzin-card) and load it in the frontend."""
+    card = Path(__file__).parent / "frontend" / "mbenzin-card.js"
+    await hass.http.async_register_static_paths([StaticPathConfig(CARD_URL, str(card), cache_headers=False)])
+    add_extra_js_url(hass, f"{CARD_URL}?v={CARD_VERSION}")
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: MBenzinConfigEntry) -> bool:

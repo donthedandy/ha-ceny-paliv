@@ -5,6 +5,9 @@ from datetime import timedelta
 
 DOMAIN = "mbenzin"
 
+CARD_URL = "/mbenzin_static/mbenzin-card.js"
+CARD_VERSION = "0.2.0"
+
 CONF_KEY = "key"
 CONF_CITY = "city"
 CONF_FUELS = "fuels"
