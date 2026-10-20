@@ -1,0 +1,5 @@
+secrets.yaml
+.mbenzin_cache.json
+.mbenzin_history.json
+*.tmp
+.DS_Store
