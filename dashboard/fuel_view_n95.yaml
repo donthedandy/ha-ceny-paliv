@@ -1,19 +1,26 @@
 # Fuel view — Natural 95 — Home Assistant (sections view)
 # Shows: "My station" card (price, 1/2/7/14/30-day trends, rank), top 5 cheapest stations with logos and
 #        day-over-day arrows, map with prices, 30-day statistics graph.
+# Pohled pro palivo Natural 95: karta „Moje stanice“ (cena, trendy za 1/2/7/14/30 dní, pořadí), 5 nejlevnějších
+#        stanic s logy a šipkami změny oproti včerejšku, mapa s cenami a graf za 30 dní.
 #
-# How to add it: Dashboard > Edit > + (add view) > ⋮ > Edit in YAML > replace everything with this file > Save
+# How to add it / Jak ho přidat:
+#   Dashboard > Edit > + (add view) > ⋮ > Edit in YAML > replace everything with this file > Save
+#   Dashboard > Upravit > + (přidat pohled) > ⋮ > Upravit v YAML > nahradit vše obsahem tohoto souboru > Uložit
 #
-# Requirements
+# Requirements / Požadavky
 #   - Frontend: custom:button-card (HACS).
-#   - The mBenzin integration with the fuel "n95" selected. It creates
-#       sensor.mbenzin_n95_top5     summary sensor; attributes: stations[], home, fetched_at, last_attempt,
-#                                   fetch_error, city_total, excluded, max_age_days, fuel_label, city_name
-#       sensor.mbenzin_n95_home     your favourite station (exists only if you picked one in the setup)
-#       sensor.mbenzin_n95_1..5     the 5 cheapest stations, with latitude/longitude (used by the map)
+#   - The mBenzin integration with the fuel "n95" selected. It creates / Integrace mBenzin s vybraným palivem „n95“:
+#       sensor.mbenzin_n95_top5     summary sensor; attributes: stations[], home, fetched_at, next_update, fetch_error,
+#                                   labels (texts in the language chosen in the setup), city_name, ...
+#       sensor.mbenzin_n95_home     your favourite station (only if you picked one) / oblíbená stanice (pokud jste ji vybrali)
+#       sensor.mbenzin_n95_1..5     the 5 cheapest stations, with latitude/longitude (used by the map) / 5 nejlevnějších stanic (mapa)
+#   - Texts follow the language chosen in the integration setup (English / Čeština): Settings > Devices & services >
+#     mBenzin > Configure. / Jazyk textů se volí v nastavení integrace (English / Čeština).
 #   - Logos (optional, not included — trademarks): round 128 px PNGs in config/www/ named after the chain,
 #     lowercase, e.g. orlen.png, makro.png, tesco.png, eurobit.png. Add/remove chains in the LOGOS map below.
-#   - Data source: mBenzin.cz (personal API key required, 20 requests/hour)
+#     Loga (volitelná, nejsou součástí — ochranné známky): kulatá PNG 128 px v config/www/, pojmenovaná podle řetězce.
+#   - Data source / Zdroj dat: mBenzin.cz (personal API key required, 20 requests/hour / osobní klíč, 20 požadavků za hodinu)
 title: Natural 95
 path: fuel_n95
 icon: mdi:gas-station
@@ -34,6 +41,9 @@ sections:
         custom_fields:
           m: |-
             [[[
+            const LB = ((states['sensor.mbenzin_n95_top5'] || {}).attributes || {}).labels || {};
+            const T = (k, v) => String(LB[k] !== undefined ? LB[k] : k).replace(/\{(\w+)\}/g, (m, x) => (v && v[x] !== undefined ? v[x] : m));
+            const LOC = LB.locale || 'en-GB';
               const arrow = t => {
                 if (!t) return { icon: 'mdi:minus', color: '#5b6270', txt: '—' };
                 if (t.dir === 'down') return { icon: 'mdi:arrow-down-bold', color: '#5fd39a', txt: '−' + Math.abs(t.delta).toFixed(2) };
@@ -41,12 +51,12 @@ sections:
                 return { icon: 'mdi:minus', color: '#f5c26b', txt: '0.00' };
               };
               const a = entity.attributes;
-              const stationName = a.station || 'My station';
+              const stationName = a.station || T('my_station');
               const chain = stationName.split(' ')[0].toLowerCase();
               const ok = !['unavailable', 'unknown'].includes(entity.state);
               const price = ok ? Number(entity.state).toFixed(2) : '—';
               const stale = a.age_days == null || Number(a.age_days) > 1;
-              const updTxt = a.age_days == 0 ? 'Updated today' : (a.age_days == 1 ? 'Updated yesterday' : 'Price from ' + (a.updated || '—') + ' — may be outdated');
+              const updTxt = a.age_days == 0 ? T('updated_today') : (a.age_days == 1 ? T('updated_yesterday') : T('price_from', {d: a.updated || '—'}));
               const tr = a.trends || {};
               const today = new Date(); today.setHours(0, 0, 0, 0);
               let partial = null;
@@ -60,17 +70,17 @@ sections:
                   <span style="font-size:13px;font-weight:800;color:${r.color};white-space:nowrap">${r.txt}</span></div>`; };
               const chips = [1, 2, 7, 14, 30].map(chip).join('');
               const anyTrend = Object.values(tr).some(Boolean);
-              const note = !anyTrend ? 'Trends start tomorrow (first daily record: today)'
-                         : (partial ? '* since ' + new Date(partial + 'T00:00:00').toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) + ' — history still filling' : '');
+              const note = !anyTrend ? T('trends_start')
+                         : (partial ? T('since_partial', {d: new Date(partial + 'T00:00:00').toLocaleDateString(LOC, {day: 'numeric', month: 'short'})}) : '');
               let pos;
-              if (a.rank == null) pos = '<span style="color:#f5c26b">Not ranked — price older than yesterday</span>';
-              else if (Number(a.vs_cheapest) <= 0) pos = `<span style="color:#5fd39a">Cheapest in town · #${a.rank} of ${a.fresh_count} up-to-date stations</span>`;
-              else pos = `<span style="color:#f5c26b">+${Number(a.vs_cheapest).toFixed(2)} vs cheapest (${a.cheapest_name}) · #${a.rank} of ${a.fresh_count}</span>`;
+              if (a.rank == null) pos = '<span style="color:#f5c26b">' + T('not_ranked') + '</span>';
+              else if (Number(a.vs_cheapest) <= 0) pos = `<span style="color:#5fd39a">${T('cheapest_town', {rank: a.rank, n: a.fresh_count})}</span>`;
+              else pos = `<span style="color:#f5c26b">${T('vs_cheapest', {d: Number(a.vs_cheapest).toFixed(2), name: a.cheapest_name, rank: a.rank, n: a.fresh_count})}</span>`;
               return `<div style="display:flex;flex-direction:column;gap:12px;width:100%;text-align:left">
                 <div style="display:flex;align-items:center;gap:12px">
                   <img src="/local/${chain}.png?v=1" alt="${chain}" onerror="this.style.display='none'" style="width:44px;height:44px;border-radius:999px;flex-shrink:0;display:block">
                   <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;min-width:0">
-                    <span style="font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:#9aa1ad">My station</span>
+                    <span style="font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:#9aa1ad">${T('my_station')}</span>
                     <span style="font-size:15px;font-weight:700;color:#eef0f3">${stationName}</span>
                     <span style="font-size:12px;color:${stale ? '#f5c26b' : '#9aa1ad'}">${updTxt}</span></div>
                   <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">
@@ -80,7 +90,7 @@ sections:
                 <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px">${chips}</div>
                 ${note ? `<span style="font-size:11px;color:#5b6270;margin-top:-4px">${note}</span>` : ''}
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;font-weight:600">${pos}
-                  <span style="color:#5b6270;font-weight:500;white-space:nowrap">Tap for full history</span></div>
+                  <span style="color:#5b6270;font-weight:500;white-space:nowrap">${T('tap_history')}</span></div>
               </div>`;
             ]]]
         styles:
@@ -111,6 +121,9 @@ sections:
         custom_fields:
           head: |-
             [[[
+            const LB = ((states['sensor.mbenzin_n95_top5'] || {}).attributes || {}).labels || {};
+            const T = (k, v) => String(LB[k] !== undefined ? LB[k] : k).replace(/\{(\w+)\}/g, (m, x) => (v && v[x] !== undefined ? v[x] : m));
+            const LOC = LB.locale || 'en-GB';
               const S = states['sensor.mbenzin_n95_top5'];
               const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
               const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
@@ -122,14 +135,14 @@ sections:
               const min = prices.length ? Math.min(...prices) : null;
               const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
               const fp = p => Number(p).toFixed(2);
-              const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+              const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); };
               const n = min === null ? 0 : list.filter(s => Number(s.price) === min).length;
-              const sub = min === null ? 'No recent prices (today or yesterday)' : `Cheapest ${fp(min)} ${unit}` + (n > 1 ? ` · ${n} stations at this price` : '');
+              const sub = min === null ? T('no_recent') : T('cheapest_price', {p: fp(min), unit: unit}) + (n > 1 ? ' · ' + T('stations_same', {n: n}) : '');
               return `<div style="display:flex;align-items:center;gap:12px;width:100%">
                 <div style="width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(245,177,76,0.16);flex-shrink:0">
                   <ha-icon icon="mdi:gas-station" style="--mdc-icon-size:22px;color:#f5b14c"></ha-icon></div>
                 <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
-                  <span style="font-size:15px;font-weight:700;color:#eef0f3">Natural 95 · ${(S && S.attributes.city_name) || ''}</span>
+                  <span style="font-size:15px;font-weight:700;color:#eef0f3">${(S && S.attributes.fuel_label) || 'Natural 95'} · ${(S && S.attributes.city_name) || ''}</span>
                   <span style="font-size:13px;color:#9aa1ad">${sub}</span></div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">
                   <span style="font-size:28px;font-weight:800;letter-spacing:-0.02em;line-height:1;color:${min === null ? '#5b6270' : '#5fd39a'}">${min === null ? '—' : fp(min)}</span>
@@ -138,6 +151,9 @@ sections:
             ]]]
           foot: |-
             [[[
+            const LB = ((states['sensor.mbenzin_n95_top5'] || {}).attributes || {}).labels || {};
+            const T = (k, v) => String(LB[k] !== undefined ? LB[k] : k).replace(/\{(\w+)\}/g, (m, x) => (v && v[x] !== undefined ? v[x] : m));
+            const LOC = LB.locale || 'en-GB';
               const S = states['sensor.mbenzin_n95_top5'];
               const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
               const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
@@ -149,24 +165,23 @@ sections:
               const min = prices.length ? Math.min(...prices) : null;
               const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
               const fp = p => Number(p).toFixed(2);
-              const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+              const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); };
               const now = new Date();
-              const hm = d => d.toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
-              const when = d => d.toDateString() === now.toDateString() ? hm(d) : d.toLocaleString('en-GB', {weekday: 'short', hour: '2-digit', minute: '2-digit'});
+              const hm = d => d.toLocaleTimeString(LOC, {hour: '2-digit', minute: '2-digit'});
+              const when = d => d.toDateString() === now.toDateString() ? hm(d) : d.toLocaleString(LOC, {weekday: 'short', hour: '2-digit', minute: '2-digit'});
               const fa = S && S.attributes.fetched_at ? new Date(S.attributes.fetched_at) : null;
               const la = S && S.attributes.last_attempt ? new Date(S.attributes.last_attempt) : null;
               const err = S && S.attributes.fetch_error;
-              const slots = [5, 11, 14, 17, 21];
-              const nh = slots.find(h => h > now.getHours());
-              const next = nh !== undefined ? String(nh).padStart(2, '0') + ':00' : 'tomorrow 05:00';
+              const nu = S && S.attributes.next_update ? new Date(S.attributes.next_update) : null;
+              const next = nu ? when(nu) : '—';
               const total = S && S.attributes.city_total;
               const hidden = ((S && S.attributes.excluded) || 0) + (all.length - list.length);
               const lines = [];
-              lines.push(`<span style="font-size:13px;color:#d6dae1;font-weight:600">Table updated ${fa ? when(fa) : '—'} · next refresh ${next}</span>`);
-              if (err) lines.push(`<span style="font-size:12px;color:#f5c26b">Last refresh failed${la ? ' at ' + when(la) : ''} (${err}) — showing the previous data</span>`);
-              if (total) lines.push(`<span style="font-size:12px;color:#9aa1ad">${hidden} of ${total} stations hidden — price older than ${maxAge >= 1 ? 'yesterday' : 'today'}</span>`);
-              lines.push('<span style="font-size:11px;color:#9aa1ad">Arrows: price vs yesterday · <span style="color:#5fd39a">▼ down</span> · <span style="color:#f5c26b">— stable</span> · <span style="color:#ff7a6b">▲ up</span> · long-press a row for your station history</span>');
-              lines.push('<span style="font-size:11px;color:#5b6270">mBenzin.cz · Natural 95 (E10 not distinguished) · tap a station to open Google Maps</span>');
+              lines.push(`<span style="font-size:13px;color:#d6dae1;font-weight:600">${T('table_updated', {t: fa ? when(fa) : '—', n: next})}</span>`);
+              if (err) lines.push(`<span style="font-size:12px;color:#f5c26b">${T('refresh_failed', {at: la ? T('at') + when(la) : '', err: err})}</span>`);
+              if (total) lines.push(`<span style="font-size:12px;color:#9aa1ad">${T('hidden', {h: hidden, t: total, age: maxAge >= 1 ? T('yesterday_l') : T('today_l')})}</span>`);
+              lines.push('<span style="font-size:11px;color:#9aa1ad">' + T('arrows') + ' · <span style="color:#5fd39a">▼ ' + T('down') + '</span> · <span style="color:#f5c26b">— ' + T('stable') + '</span> · <span style="color:#ff7a6b">▲ ' + T('up') + '</span> · ' + T('longpress') + '</span>');
+              lines.push('<span style="font-size:11px;color:#5b6270">mBenzin.cz · ' + ((S && S.attributes.fuel_label) || 'Natural 95') + (S && S.attributes.fuel === 'n95' ? ' ' + T('e10_note') : '') + ' · ' + T('tap_station') + '</span>');
               return `<div style="display:flex;flex-direction:column;gap:3px;text-align:left">${lines.join('')}</div>`;
             ]]]
           r0:
@@ -190,13 +205,16 @@ sections:
                     const min = prices.length ? Math.min(...prices) : null;
                     const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                     const fp = p => Number(p).toFixed(2);
-                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[0] ? list[0].maps : ''; ]]]
+                    const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); }; return list[0] ? list[0].maps : ''; ]]]
               hold_action:
                 action: more-info
                 entity: sensor.mbenzin_n95_home
               custom_fields:
                 r: |-
                   [[[
+                  const LB = ((states['sensor.mbenzin_n95_top5'] || {}).attributes || {}).labels || {};
+                  const T = (k, v) => String(LB[k] !== undefined ? LB[k] : k).replace(/\{(\w+)\}/g, (m, x) => (v && v[x] !== undefined ? v[x] : m));
+                  const LOC = LB.locale || 'en-GB';
                     const S = states['sensor.mbenzin_n95_top5'];
                     const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
                     const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
@@ -208,7 +226,7 @@ sections:
                     const min = prices.length ? Math.min(...prices) : null;
                     const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                     const fp = p => Number(p).toFixed(2);
-                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+                    const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); };
                     const arrow = (t, size) => {
                       if (!t) return { icon: 'mdi:minus', color: '#5b6270', txt: '—' };
                       if (t.dir === 'down') return { icon: 'mdi:arrow-down-bold', color: '#5fd39a', txt: '−' + Math.abs(t.delta).toFixed(2) };
@@ -229,19 +247,19 @@ sections:
                     const a0 = s.address || '';
                     const addr = a0.startsWith(name) ? a0.slice(name.length).trim() : a0;
                     const tr = arrow((s.trends || {})['1']);
-                    const home = s.home ? '<ha-icon icon="mdi:home" title="My station" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
-                    const when = age(s) <= 0 ? 'Today' : `<span style="color:#f5c26b">${upd(s)}</span>`;
+                    const home = s.home ? '<ha-icon icon="mdi:home" title="' + T('my_station') + '" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
+                    const when = age(s) <= 0 ? T('today') : `<span style="color:#f5c26b">${upd(s)}</span>`;
                     return `<div style="display:flex;align-items:center;gap:12px;width:100%">
                       ${avatar}
                       <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
                         <span style="font-size:15px;font-weight:700;color:#eef0f3">${name}${home}</span>
                         <span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${addr} · ${when}</span></div>
-                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="vs yesterday">
+                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="${T('vs_yesterday')}">
                         <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
                         <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
                       <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px">
                         <span style="font-size:18px;font-weight:800;color:${best ? '#5fd39a' : '#eef0f3'}">${fp(s.price)}</span>
-                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? 'Cheapest' : '+' + fp(diff)}</span></div>
+                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? T('cheapest_badge') : '+' + fp(diff)}</span></div>
                       <ha-icon icon="mdi:chevron-right" style="--mdc-icon-size:18px;color:#5b6270;flex-shrink:0"></ha-icon>
                     </div>`;
                   ]]]
@@ -269,7 +287,7 @@ sections:
                         const min = prices.length ? Math.min(...prices) : null;
                         const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                         const fp = p => Number(p).toFixed(2);
-                        const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[0] ? 'block' : 'none'; ]]]
+                        const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); }; return list[0] ? 'block' : 'none'; ]]]
                 custom_fields:
                   r:
                     - width: 100%
@@ -294,13 +312,16 @@ sections:
                     const min = prices.length ? Math.min(...prices) : null;
                     const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                     const fp = p => Number(p).toFixed(2);
-                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[1] ? list[1].maps : ''; ]]]
+                    const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); }; return list[1] ? list[1].maps : ''; ]]]
               hold_action:
                 action: more-info
                 entity: sensor.mbenzin_n95_home
               custom_fields:
                 r: |-
                   [[[
+                  const LB = ((states['sensor.mbenzin_n95_top5'] || {}).attributes || {}).labels || {};
+                  const T = (k, v) => String(LB[k] !== undefined ? LB[k] : k).replace(/\{(\w+)\}/g, (m, x) => (v && v[x] !== undefined ? v[x] : m));
+                  const LOC = LB.locale || 'en-GB';
                     const S = states['sensor.mbenzin_n95_top5'];
                     const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
                     const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
@@ -312,7 +333,7 @@ sections:
                     const min = prices.length ? Math.min(...prices) : null;
                     const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                     const fp = p => Number(p).toFixed(2);
-                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+                    const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); };
                     const arrow = (t, size) => {
                       if (!t) return { icon: 'mdi:minus', color: '#5b6270', txt: '—' };
                       if (t.dir === 'down') return { icon: 'mdi:arrow-down-bold', color: '#5fd39a', txt: '−' + Math.abs(t.delta).toFixed(2) };
@@ -333,19 +354,19 @@ sections:
                     const a0 = s.address || '';
                     const addr = a0.startsWith(name) ? a0.slice(name.length).trim() : a0;
                     const tr = arrow((s.trends || {})['1']);
-                    const home = s.home ? '<ha-icon icon="mdi:home" title="My station" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
-                    const when = age(s) <= 0 ? 'Today' : `<span style="color:#f5c26b">${upd(s)}</span>`;
+                    const home = s.home ? '<ha-icon icon="mdi:home" title="' + T('my_station') + '" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
+                    const when = age(s) <= 0 ? T('today') : `<span style="color:#f5c26b">${upd(s)}</span>`;
                     return `<div style="display:flex;align-items:center;gap:12px;width:100%">
                       ${avatar}
                       <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
                         <span style="font-size:15px;font-weight:700;color:#eef0f3">${name}${home}</span>
                         <span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${addr} · ${when}</span></div>
-                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="vs yesterday">
+                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="${T('vs_yesterday')}">
                         <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
                         <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
                       <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px">
                         <span style="font-size:18px;font-weight:800;color:${best ? '#5fd39a' : '#eef0f3'}">${fp(s.price)}</span>
-                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? 'Cheapest' : '+' + fp(diff)}</span></div>
+                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? T('cheapest_badge') : '+' + fp(diff)}</span></div>
                       <ha-icon icon="mdi:chevron-right" style="--mdc-icon-size:18px;color:#5b6270;flex-shrink:0"></ha-icon>
                     </div>`;
                   ]]]
@@ -373,7 +394,7 @@ sections:
                         const min = prices.length ? Math.min(...prices) : null;
                         const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                         const fp = p => Number(p).toFixed(2);
-                        const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[1] ? 'block' : 'none'; ]]]
+                        const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); }; return list[1] ? 'block' : 'none'; ]]]
                 custom_fields:
                   r:
                     - width: 100%
@@ -398,13 +419,16 @@ sections:
                     const min = prices.length ? Math.min(...prices) : null;
                     const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                     const fp = p => Number(p).toFixed(2);
-                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[2] ? list[2].maps : ''; ]]]
+                    const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); }; return list[2] ? list[2].maps : ''; ]]]
               hold_action:
                 action: more-info
                 entity: sensor.mbenzin_n95_home
               custom_fields:
                 r: |-
                   [[[
+                  const LB = ((states['sensor.mbenzin_n95_top5'] || {}).attributes || {}).labels || {};
+                  const T = (k, v) => String(LB[k] !== undefined ? LB[k] : k).replace(/\{(\w+)\}/g, (m, x) => (v && v[x] !== undefined ? v[x] : m));
+                  const LOC = LB.locale || 'en-GB';
                     const S = states['sensor.mbenzin_n95_top5'];
                     const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
                     const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
@@ -416,7 +440,7 @@ sections:
                     const min = prices.length ? Math.min(...prices) : null;
                     const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                     const fp = p => Number(p).toFixed(2);
-                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+                    const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); };
                     const arrow = (t, size) => {
                       if (!t) return { icon: 'mdi:minus', color: '#5b6270', txt: '—' };
                       if (t.dir === 'down') return { icon: 'mdi:arrow-down-bold', color: '#5fd39a', txt: '−' + Math.abs(t.delta).toFixed(2) };
@@ -437,19 +461,19 @@ sections:
                     const a0 = s.address || '';
                     const addr = a0.startsWith(name) ? a0.slice(name.length).trim() : a0;
                     const tr = arrow((s.trends || {})['1']);
-                    const home = s.home ? '<ha-icon icon="mdi:home" title="My station" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
-                    const when = age(s) <= 0 ? 'Today' : `<span style="color:#f5c26b">${upd(s)}</span>`;
+                    const home = s.home ? '<ha-icon icon="mdi:home" title="' + T('my_station') + '" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
+                    const when = age(s) <= 0 ? T('today') : `<span style="color:#f5c26b">${upd(s)}</span>`;
                     return `<div style="display:flex;align-items:center;gap:12px;width:100%">
                       ${avatar}
                       <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
                         <span style="font-size:15px;font-weight:700;color:#eef0f3">${name}${home}</span>
                         <span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${addr} · ${when}</span></div>
-                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="vs yesterday">
+                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="${T('vs_yesterday')}">
                         <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
                         <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
                       <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px">
                         <span style="font-size:18px;font-weight:800;color:${best ? '#5fd39a' : '#eef0f3'}">${fp(s.price)}</span>
-                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? 'Cheapest' : '+' + fp(diff)}</span></div>
+                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? T('cheapest_badge') : '+' + fp(diff)}</span></div>
                       <ha-icon icon="mdi:chevron-right" style="--mdc-icon-size:18px;color:#5b6270;flex-shrink:0"></ha-icon>
                     </div>`;
                   ]]]
@@ -477,7 +501,7 @@ sections:
                         const min = prices.length ? Math.min(...prices) : null;
                         const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                         const fp = p => Number(p).toFixed(2);
-                        const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[2] ? 'block' : 'none'; ]]]
+                        const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); }; return list[2] ? 'block' : 'none'; ]]]
                 custom_fields:
                   r:
                     - width: 100%
@@ -502,13 +526,16 @@ sections:
                     const min = prices.length ? Math.min(...prices) : null;
                     const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                     const fp = p => Number(p).toFixed(2);
-                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[3] ? list[3].maps : ''; ]]]
+                    const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); }; return list[3] ? list[3].maps : ''; ]]]
               hold_action:
                 action: more-info
                 entity: sensor.mbenzin_n95_home
               custom_fields:
                 r: |-
                   [[[
+                  const LB = ((states['sensor.mbenzin_n95_top5'] || {}).attributes || {}).labels || {};
+                  const T = (k, v) => String(LB[k] !== undefined ? LB[k] : k).replace(/\{(\w+)\}/g, (m, x) => (v && v[x] !== undefined ? v[x] : m));
+                  const LOC = LB.locale || 'en-GB';
                     const S = states['sensor.mbenzin_n95_top5'];
                     const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
                     const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
@@ -520,7 +547,7 @@ sections:
                     const min = prices.length ? Math.min(...prices) : null;
                     const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                     const fp = p => Number(p).toFixed(2);
-                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+                    const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); };
                     const arrow = (t, size) => {
                       if (!t) return { icon: 'mdi:minus', color: '#5b6270', txt: '—' };
                       if (t.dir === 'down') return { icon: 'mdi:arrow-down-bold', color: '#5fd39a', txt: '−' + Math.abs(t.delta).toFixed(2) };
@@ -541,19 +568,19 @@ sections:
                     const a0 = s.address || '';
                     const addr = a0.startsWith(name) ? a0.slice(name.length).trim() : a0;
                     const tr = arrow((s.trends || {})['1']);
-                    const home = s.home ? '<ha-icon icon="mdi:home" title="My station" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
-                    const when = age(s) <= 0 ? 'Today' : `<span style="color:#f5c26b">${upd(s)}</span>`;
+                    const home = s.home ? '<ha-icon icon="mdi:home" title="' + T('my_station') + '" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
+                    const when = age(s) <= 0 ? T('today') : `<span style="color:#f5c26b">${upd(s)}</span>`;
                     return `<div style="display:flex;align-items:center;gap:12px;width:100%">
                       ${avatar}
                       <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
                         <span style="font-size:15px;font-weight:700;color:#eef0f3">${name}${home}</span>
                         <span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${addr} · ${when}</span></div>
-                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="vs yesterday">
+                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="${T('vs_yesterday')}">
                         <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
                         <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
                       <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px">
                         <span style="font-size:18px;font-weight:800;color:${best ? '#5fd39a' : '#eef0f3'}">${fp(s.price)}</span>
-                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? 'Cheapest' : '+' + fp(diff)}</span></div>
+                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? T('cheapest_badge') : '+' + fp(diff)}</span></div>
                       <ha-icon icon="mdi:chevron-right" style="--mdc-icon-size:18px;color:#5b6270;flex-shrink:0"></ha-icon>
                     </div>`;
                   ]]]
@@ -581,7 +608,7 @@ sections:
                         const min = prices.length ? Math.min(...prices) : null;
                         const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                         const fp = p => Number(p).toFixed(2);
-                        const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[3] ? 'block' : 'none'; ]]]
+                        const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); }; return list[3] ? 'block' : 'none'; ]]]
                 custom_fields:
                   r:
                     - width: 100%
@@ -606,13 +633,16 @@ sections:
                     const min = prices.length ? Math.min(...prices) : null;
                     const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                     const fp = p => Number(p).toFixed(2);
-                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[4] ? list[4].maps : ''; ]]]
+                    const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); }; return list[4] ? list[4].maps : ''; ]]]
               hold_action:
                 action: more-info
                 entity: sensor.mbenzin_n95_home
               custom_fields:
                 r: |-
                   [[[
+                  const LB = ((states['sensor.mbenzin_n95_top5'] || {}).attributes || {}).labels || {};
+                  const T = (k, v) => String(LB[k] !== undefined ? LB[k] : k).replace(/\{(\w+)\}/g, (m, x) => (v && v[x] !== undefined ? v[x] : m));
+                  const LOC = LB.locale || 'en-GB';
                     const S = states['sensor.mbenzin_n95_top5'];
                     const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
                     const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
@@ -624,7 +654,7 @@ sections:
                     const min = prices.length ? Math.min(...prices) : null;
                     const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                     const fp = p => Number(p).toFixed(2);
-                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+                    const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); };
                     const arrow = (t, size) => {
                       if (!t) return { icon: 'mdi:minus', color: '#5b6270', txt: '—' };
                       if (t.dir === 'down') return { icon: 'mdi:arrow-down-bold', color: '#5fd39a', txt: '−' + Math.abs(t.delta).toFixed(2) };
@@ -645,19 +675,19 @@ sections:
                     const a0 = s.address || '';
                     const addr = a0.startsWith(name) ? a0.slice(name.length).trim() : a0;
                     const tr = arrow((s.trends || {})['1']);
-                    const home = s.home ? '<ha-icon icon="mdi:home" title="My station" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
-                    const when = age(s) <= 0 ? 'Today' : `<span style="color:#f5c26b">${upd(s)}</span>`;
+                    const home = s.home ? '<ha-icon icon="mdi:home" title="' + T('my_station') + '" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
+                    const when = age(s) <= 0 ? T('today') : `<span style="color:#f5c26b">${upd(s)}</span>`;
                     return `<div style="display:flex;align-items:center;gap:12px;width:100%">
                       ${avatar}
                       <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
                         <span style="font-size:15px;font-weight:700;color:#eef0f3">${name}${home}</span>
                         <span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${addr} · ${when}</span></div>
-                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="vs yesterday">
+                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="${T('vs_yesterday')}">
                         <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
                         <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
                       <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px">
                         <span style="font-size:18px;font-weight:800;color:${best ? '#5fd39a' : '#eef0f3'}">${fp(s.price)}</span>
-                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? 'Cheapest' : '+' + fp(diff)}</span></div>
+                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? T('cheapest_badge') : '+' + fp(diff)}</span></div>
                       <ha-icon icon="mdi:chevron-right" style="--mdc-icon-size:18px;color:#5b6270;flex-shrink:0"></ha-icon>
                     </div>`;
                   ]]]
@@ -685,7 +715,7 @@ sections:
                         const min = prices.length ? Math.min(...prices) : null;
                         const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
                         const fp = p => Number(p).toFixed(2);
-                        const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[4] ? 'block' : 'none'; ]]]
+                        const upd = s => { const a = age(s); return a <= 0 ? T('today') : (a === 1 ? T('yesterday') : (s.updated || '—')); }; return list[4] ? 'block' : 'none'; ]]]
                 custom_fields:
                   r:
                     - width: 100%
@@ -748,17 +778,15 @@ sections:
             label_mode: state
             focus: true
           - entity: sensor.mbenzin_n95_home
-            name: My station
             label_mode: state
             focus: true
         grid_options:
           columns: full
           rows: 7
       - type: statistics-graph
-        title: My station · last 30 days
+        title: 30 d
         entities:
           - entity: sensor.mbenzin_n95_home
-            name: My station
         days_to_show: 30
         period: day
         chart_type: line
