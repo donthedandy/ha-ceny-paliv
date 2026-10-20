@@ -56,7 +56,7 @@ Pro každé palivo `<palivo>` (`n95`, `benzinplus`, `diesel`, `dieselplus`, `lpg
 | `sensor.ceny_paliv_<palivo>_home` | cena u vaší oblíbené stanice (jen pokud jste nějakou vybrali), trendy, pořadí, statistika |
 | `sensor.ceny_paliv_<palivo>_1` … `_5` | 5 nejlevnějších stanic se zeměpisnou šířkou a délkou pro kartu mapy |
 
-Ceny se obnovují každých 6 hodin. Pokud se aktualizace nepovede (třeba kvůli chybě 429), zůstanou zachována poslední data a atribut `fetch_error` uvede důvod.
+Senzory se jmenují podle stanice, kterou právě ukazují (např. `1 · Orlen – Bratri Stefanu 69`); identifikátory entit se nemění. Ceny se obnovují každých 6 hodin. Pokud se aktualizace nepovede (třeba kvůli chybě 429), zůstanou zachována poslední data a atribut `fetch_error` uvede důvod.
 
 ## 3. Karta pro dashboard (je součástí, nic dalšího se neinstaluje)
 
@@ -85,6 +85,36 @@ Pro každé palivo jedna karta: pro vůz na dvě paliva přidejte druhou kartu s
 Texty karty odpovídají jazyku zvolenému při nastavení. Loga jsou volitelná: kulatá PNG 128 px pojmenovaná podle řetězce (`orlen.png`, …) dejte do `config/www/` a řetězce vypište v `logos`; jde o ochranné známky, proto nejsou součástí. Pokud se karta po aktualizaci nezobrazí, obnovte stránku v prohlížeči (Ctrl+F5).
 
 Upozornění na změnu ceny na telefonu: viz `examples/price_alert.yaml`.
+
+## 4. Bez karty: standardní karty
+
+Každý senzor se jmenuje podle toho, co právě ukazuje (např. `1 · Orlen – Bratri Stefanu 69`), takže stanici zobrazí jakákoli standardní karta, bez šablony. Názvy sledují pořadí a mění se při každé aktualizaci; identifikátory entit se nemění.
+
+Karta **Entity** s 5 nejlevnějšími stanicemi (stav senzoru je cena):
+
+```yaml
+type: entities
+title: Natural 95
+entities:
+  - sensor.ceny_paliv_n95_1
+  - sensor.ceny_paliv_n95_2
+  - sensor.ceny_paliv_n95_3
+  - sensor.ceny_paliv_n95_4
+  - sensor.ceny_paliv_n95_5
+```
+
+Karta **Markdown** s adresou a odkazem na Google Maps:
+
+```yaml
+type: markdown
+title: Natural 95 – top 5
+content: |-
+  {% for s in (state_attr('sensor.ceny_paliv_n95_top5', 'stations') or []) %}
+  {{ s.rank }}. **{{ s.name }}** – {{ s.street }}: **{{ '%.2f' | format(s.price) }} Kč/l** · [Maps]({{ s.maps }})
+  {% endfor %}
+```
+
+Každá stanice v atributu `stations` senzoru `sensor.ceny_paliv_<palivo>_top5` má: `rank`, `name`, `street`, `address`, `price`, `lat`, `lng`, `updated`, `maps`, `home` a `trends`. Pro oblíbenou stanici použijte senzor `_home` (jeho atributy obsahují `rank`, `vs_cheapest` a `trends`).
 
 ## Poznámky
 

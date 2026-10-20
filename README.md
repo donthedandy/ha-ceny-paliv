@@ -50,7 +50,7 @@ For each fuel `<fuel>` (`n95`, `benzinplus`, `diesel`, `dieselplus`, `lpg`, `cng
 | `sensor.ceny_paliv_<fuel>_home` | price at your favourite station (only if you chose one); trends, rank, statistics |
 | `sensor.ceny_paliv_<fuel>_1` … `_5` | the 5 cheapest stations, with latitude/longitude for the map card |
 
-Prices refresh every 6 hours. If a refresh fails (for example HTTP 429) the last data is kept and the attribute `fetch_error` says why.
+The sensors are named after the station they currently show (for example `1 · Orlen – Bratri Stefanu 69`); the entity ids never change. Prices refresh every 6 hours. If a refresh fails (for example HTTP 429) the last data is kept and the attribute `fetch_error` says why.
 
 ## 3. The dashboard card (included, nothing else to install)
 
@@ -79,6 +79,36 @@ One card per fuel: for a dual-fuel car add a second card with `fuel: lpg`. The c
 Texts follow the language chosen in the setup. Logos are optional: put round 128 px PNGs named after the chain (`orlen.png`, …) in `config/www/` and list the chains in `logos`; they are trademarks, so none are included. If the card does not show up after an update, reload the browser page (Ctrl+F5).
 
 For a notification when your station's price changes, see `examples/price_alert.yaml`.
+
+## 4. Without the card: standard cards
+
+Every sensor is named after what it currently shows (for example `1 · Orlen – Bratri Stefanu 69`), so any standard card displays the station without a template. The names follow the ranking and update at each refresh; the entity ids never change.
+
+An **Entities** card with the 5 cheapest stations (the sensor state is the price):
+
+```yaml
+type: entities
+title: Natural 95
+entities:
+  - sensor.ceny_paliv_n95_1
+  - sensor.ceny_paliv_n95_2
+  - sensor.ceny_paliv_n95_3
+  - sensor.ceny_paliv_n95_4
+  - sensor.ceny_paliv_n95_5
+```
+
+A **Markdown** card with the address and a Google Maps link:
+
+```yaml
+type: markdown
+title: Natural 95 – top 5
+content: |-
+  {% for s in (state_attr('sensor.ceny_paliv_n95_top5', 'stations') or []) %}
+  {{ s.rank }}. **{{ s.name }}** – {{ s.street }}: **{{ '%.2f' | format(s.price) }} Kč/l** · [Maps]({{ s.maps }})
+  {% endfor %}
+```
+
+Each station in the `stations` attribute of `sensor.ceny_paliv_<fuel>_top5` has: `rank`, `name`, `street`, `address`, `price`, `lat`, `lng`, `updated`, `maps`, `home` and `trends`. Use the `_home` sensor for your favourite station (its attributes include `rank`, `vs_cheapest` and `trends`).
 
 ## Notes
 
