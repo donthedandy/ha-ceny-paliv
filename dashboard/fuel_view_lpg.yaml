@@ -1,0 +1,775 @@
+# Fuel view — LPG — Home Assistant (sections view)
+# Shows: "My station" card (price, 1/2/7/14/30-day trends, rank), top 5 cheapest stations with logos and
+#        day-over-day arrows, map with prices, 30-day statistics graph.
+#
+# How to add it: Dashboard > Edit > + (add view) > ⋮ > Edit in YAML > replace everything with this file > Save
+#
+# Requirements
+#   - Frontend: custom:button-card (HACS).
+#   - The mBenzin integration with the fuel "lpg" selected. It creates
+#       sensor.mbenzin_lpg_top5     summary sensor; attributes: stations[], home, fetched_at, last_attempt,
+#                                   fetch_error, city_total, excluded, max_age_days, fuel_label, city_name
+#       sensor.mbenzin_lpg_home     your favourite station (exists only if you picked one in the setup)
+#       sensor.mbenzin_lpg_1..5     the 5 cheapest stations, with latitude/longitude (used by the map)
+#   - Logos (optional, not included — trademarks): round 128 px PNGs in config/www/ named after the chain,
+#     lowercase, e.g. orlen.png, makro.png, tesco.png, eurobit.png. Add/remove chains in the LOGOS map below.
+#   - Data source: mBenzin.cz (personal API key required, 20 requests/hour)
+title: LPG
+path: fuel_lpg
+icon: mdi:gas-station
+type: sections
+max_columns: 2
+sections:
+  - type: grid
+    cards:
+      - type: custom:button-card
+        entity: sensor.mbenzin_lpg_home
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        hold_action:
+          action: none
+        custom_fields:
+          m: |-
+            [[[
+              const arrow = t => {
+                if (!t) return { icon: 'mdi:minus', color: '#5b6270', txt: '—' };
+                if (t.dir === 'down') return { icon: 'mdi:arrow-down-bold', color: '#5fd39a', txt: '−' + Math.abs(t.delta).toFixed(2) };
+                if (t.dir === 'up') return { icon: 'mdi:arrow-up-bold', color: '#ff7a6b', txt: '+' + Math.abs(t.delta).toFixed(2) };
+                return { icon: 'mdi:minus', color: '#f5c26b', txt: '0.00' };
+              };
+              const a = entity.attributes;
+              const stationName = a.station || 'My station';
+              const chain = stationName.split(' ')[0].toLowerCase();
+              const ok = !['unavailable', 'unknown'].includes(entity.state);
+              const price = ok ? Number(entity.state).toFixed(2) : '—';
+              const stale = a.age_days == null || Number(a.age_days) > 1;
+              const updTxt = a.age_days == 0 ? 'Updated today' : (a.age_days == 1 ? 'Updated yesterday' : 'Price from ' + (a.updated || '—') + ' — may be outdated');
+              const tr = a.trends || {};
+              const today = new Date(); today.setHours(0, 0, 0, 0);
+              let partial = null;
+              const chip = n => { const t = tr[String(n)]; const r = arrow(t);
+                let covered = true;
+                if (t) { const target = new Date(today); target.setDate(target.getDate() - n);
+                  covered = new Date(t.ref_date + 'T00:00:00') <= target; if (!covered) partial = t.ref_date; }
+                return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;background:#1f232b;border-radius:12px;padding:8px 2px;min-width:0">
+                  <span style="font-size:11px;font-weight:700;color:#9aa1ad">${n} d${t && !covered ? '*' : ''}</span>
+                  <ha-icon icon="${r.icon}" style="--mdc-icon-size:18px;color:${r.color}"></ha-icon>
+                  <span style="font-size:13px;font-weight:800;color:${r.color};white-space:nowrap">${r.txt}</span></div>`; };
+              const chips = [1, 2, 7, 14, 30].map(chip).join('');
+              const anyTrend = Object.values(tr).some(Boolean);
+              const note = !anyTrend ? 'Trends start tomorrow (first daily record: today)'
+                         : (partial ? '* since ' + new Date(partial + 'T00:00:00').toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) + ' — history still filling' : '');
+              let pos;
+              if (a.rank == null) pos = '<span style="color:#f5c26b">Not ranked — price older than yesterday</span>';
+              else if (Number(a.vs_cheapest) <= 0) pos = `<span style="color:#5fd39a">Cheapest in town · #${a.rank} of ${a.fresh_count} up-to-date stations</span>`;
+              else pos = `<span style="color:#f5c26b">+${Number(a.vs_cheapest).toFixed(2)} vs cheapest (${a.cheapest_name}) · #${a.rank} of ${a.fresh_count}</span>`;
+              return `<div style="display:flex;flex-direction:column;gap:12px;width:100%;text-align:left">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <img src="/local/${chain}.png?v=1" alt="${chain}" onerror="this.style.display='none'" style="width:44px;height:44px;border-radius:999px;flex-shrink:0;display:block">
+                  <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;min-width:0">
+                    <span style="font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:#9aa1ad">My station</span>
+                    <span style="font-size:15px;font-weight:700;color:#eef0f3">${stationName}</span>
+                    <span style="font-size:12px;color:${stale ? '#f5c26b' : '#9aa1ad'}">${updTxt}</span></div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">
+                    <span style="font-size:40px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:${stale ? '#9aa1ad' : '#eef0f3'}">${price}</span>
+                    <span style="font-size:11px;color:#9aa1ad;font-weight:600">${a.unit_of_measurement || 'Kč/l'}</span></div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px">${chips}</div>
+                ${note ? `<span style="font-size:11px;color:#5b6270;margin-top:-4px">${note}</span>` : ''}
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;font-weight:600">${pos}
+                  <span style="color:#5b6270;font-weight:500;white-space:nowrap">Tap for full history</span></div>
+              </div>`;
+            ]]]
+        styles:
+          grid:
+            - grid-template-areas: '"m"'
+          card:
+            - padding: 16px
+            - background: '#171a20'
+            - border: 1px solid rgba(76,195,217,0.30)
+            - border-radius: 22px
+            - box-shadow: none
+            - font-family: Manrope, system-ui, sans-serif
+            - --ha-ripple-color: transparent
+          custom_fields:
+            m:
+              - width: 100%
+        grid_options:
+          columns: full
+      - type: custom:button-card
+        entity: sensor.mbenzin_lpg_top5
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: none
+        hold_action:
+          action: more-info
+        custom_fields:
+          head: |-
+            [[[
+              const S = states['sensor.mbenzin_lpg_top5'];
+              const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+              const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+              const today = new Date(); today.setHours(0, 0, 0, 0);
+              const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+              const list = all.filter(s => age(s) <= maxAge);
+              const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+              const min = prices.length ? Math.min(...prices) : null;
+              const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+              const fp = p => Number(p).toFixed(2);
+              const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+              const n = min === null ? 0 : list.filter(s => Number(s.price) === min).length;
+              const sub = min === null ? 'No recent prices (today or yesterday)' : `Cheapest ${fp(min)} ${unit}` + (n > 1 ? ` · ${n} stations at this price` : '');
+              return `<div style="display:flex;align-items:center;gap:12px;width:100%">
+                <div style="width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(245,177,76,0.16);flex-shrink:0">
+                  <ha-icon icon="mdi:gas-station" style="--mdc-icon-size:22px;color:#f5b14c"></ha-icon></div>
+                <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
+                  <span style="font-size:15px;font-weight:700;color:#eef0f3">LPG · ${(S && S.attributes.city_name) || ''}</span>
+                  <span style="font-size:13px;color:#9aa1ad">${sub}</span></div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">
+                  <span style="font-size:28px;font-weight:800;letter-spacing:-0.02em;line-height:1;color:${min === null ? '#5b6270' : '#5fd39a'}">${min === null ? '—' : fp(min)}</span>
+                  <span style="font-size:11px;color:#9aa1ad;font-weight:600">${unit}</span></div>
+              </div>`;
+            ]]]
+          foot: |-
+            [[[
+              const S = states['sensor.mbenzin_lpg_top5'];
+              const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+              const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+              const today = new Date(); today.setHours(0, 0, 0, 0);
+              const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+              const list = all.filter(s => age(s) <= maxAge);
+              const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+              const min = prices.length ? Math.min(...prices) : null;
+              const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+              const fp = p => Number(p).toFixed(2);
+              const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+              const now = new Date();
+              const hm = d => d.toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
+              const when = d => d.toDateString() === now.toDateString() ? hm(d) : d.toLocaleString('en-GB', {weekday: 'short', hour: '2-digit', minute: '2-digit'});
+              const fa = S && S.attributes.fetched_at ? new Date(S.attributes.fetched_at) : null;
+              const la = S && S.attributes.last_attempt ? new Date(S.attributes.last_attempt) : null;
+              const err = S && S.attributes.fetch_error;
+              const slots = [5, 11, 14, 17, 21];
+              const nh = slots.find(h => h > now.getHours());
+              const next = nh !== undefined ? String(nh).padStart(2, '0') + ':00' : 'tomorrow 05:00';
+              const total = S && S.attributes.city_total;
+              const hidden = ((S && S.attributes.excluded) || 0) + (all.length - list.length);
+              const lines = [];
+              lines.push(`<span style="font-size:13px;color:#d6dae1;font-weight:600">Table updated ${fa ? when(fa) : '—'} · next refresh ${next}</span>`);
+              if (err) lines.push(`<span style="font-size:12px;color:#f5c26b">Last refresh failed${la ? ' at ' + when(la) : ''} (${err}) — showing the previous data</span>`);
+              if (total) lines.push(`<span style="font-size:12px;color:#9aa1ad">${hidden} of ${total} stations hidden — price older than ${maxAge >= 1 ? 'yesterday' : 'today'}</span>`);
+              lines.push('<span style="font-size:11px;color:#9aa1ad">Arrows: price vs yesterday · <span style="color:#5fd39a">▼ down</span> · <span style="color:#f5c26b">— stable</span> · <span style="color:#ff7a6b">▲ up</span> · long-press a row for your station history</span>');
+              lines.push('<span style="font-size:11px;color:#5b6270">mBenzin.cz · LPG · tap a station to open Google Maps</span>');
+              return `<div style="display:flex;flex-direction:column;gap:3px;text-align:left">${lines.join('')}</div>`;
+            ]]]
+          r0:
+            card:
+              type: custom:button-card
+              entity: sensor.mbenzin_lpg_top5
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: url
+                url_path: |-
+                  [[[ const S = states['sensor.mbenzin_lpg_top5'];
+                    const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                    const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                      const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                    const list = all.filter(s => age(s) <= maxAge);
+                    const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                    const min = prices.length ? Math.min(...prices) : null;
+                    const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                    const fp = p => Number(p).toFixed(2);
+                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[0] ? list[0].maps : ''; ]]]
+              hold_action:
+                action: more-info
+                entity: sensor.mbenzin_lpg_home
+              custom_fields:
+                r: |-
+                  [[[
+                    const S = states['sensor.mbenzin_lpg_top5'];
+                    const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                    const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                      const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                    const list = all.filter(s => age(s) <= maxAge);
+                    const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                    const min = prices.length ? Math.min(...prices) : null;
+                    const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                    const fp = p => Number(p).toFixed(2);
+                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+                    const arrow = (t, size) => {
+                      if (!t) return { icon: 'mdi:minus', color: '#5b6270', txt: '—' };
+                      if (t.dir === 'down') return { icon: 'mdi:arrow-down-bold', color: '#5fd39a', txt: '−' + Math.abs(t.delta).toFixed(2) };
+                      if (t.dir === 'up') return { icon: 'mdi:arrow-up-bold', color: '#ff7a6b', txt: '+' + Math.abs(t.delta).toFixed(2) };
+                      return { icon: 'mdi:minus', color: '#f5c26b', txt: '0.00' };
+                    };
+                    const s = list[0];
+                    if (!s) return '';
+                    const best = Number(s.price) === min;
+                    const diff = Number(s.price) - min;
+                    const badge = best ? 'background:rgba(95,211,154,0.16);color:#5fd39a' : 'background:#23272f;color:#9aa1ad';
+                    const name = s.name || '—';
+                    const LOGOS = { orlen: 'orlen', makro: 'makro', tesco: 'tesco', eurobit: 'eurobit' };
+                    const lk = Object.keys(LOGOS).find(k => (name || '').toLowerCase().startsWith(k));
+                    const avatar = lk
+                      ? `<span style="position:relative;width:32px;height:32px;flex-shrink:0;display:block"><img src="/local/${LOGOS[lk]}.png?v=1" alt="${name}" onerror="this.style.display='none'" style="width:32px;height:32px;border-radius:999px;display:block;${best ? 'box-shadow:0 0 0 2px #5fd39a' : ''}"><span style="position:absolute;right:-5px;bottom:-5px;min-width:17px;height:17px;padding:0 3px;box-sizing:border-box;border-radius:999px;background:#0e1014;border:1px solid ${best ? '#5fd39a' : '#2a2f39'};color:${best ? '#5fd39a' : '#d6dae1'};font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">1</span></span>`
+                      : `<span style="width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;${badge}">1</span>`;
+                    const a0 = s.address || '';
+                    const addr = a0.startsWith(name) ? a0.slice(name.length).trim() : a0;
+                    const tr = arrow((s.trends || {})['1']);
+                    const home = s.home ? '<ha-icon icon="mdi:home" title="My station" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
+                    const when = age(s) <= 0 ? 'Today' : `<span style="color:#f5c26b">${upd(s)}</span>`;
+                    return `<div style="display:flex;align-items:center;gap:12px;width:100%">
+                      ${avatar}
+                      <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
+                        <span style="font-size:15px;font-weight:700;color:#eef0f3">${name}${home}</span>
+                        <span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${addr} · ${when}</span></div>
+                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="vs yesterday">
+                        <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
+                        <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
+                      <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px">
+                        <span style="font-size:18px;font-weight:800;color:${best ? '#5fd39a' : '#eef0f3'}">${fp(s.price)}</span>
+                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? 'Cheapest' : '+' + fp(diff)}</span></div>
+                      <ha-icon icon="mdi:chevron-right" style="--mdc-icon-size:18px;color:#5b6270;flex-shrink:0"></ha-icon>
+                    </div>`;
+                  ]]]
+              styles:
+                grid:
+                  - grid-template-areas: '"r"'
+                card:
+                  - padding: 12px 0
+                  - background: none
+                  - border: none
+                  - border-radius: '0'
+                  - border-top: none
+                  - box-shadow: none
+                  - font-family: Manrope, system-ui, sans-serif
+                  - --ha-ripple-color: transparent
+                  - display: |-
+                      [[[ const S = states['sensor.mbenzin_lpg_top5'];
+                        const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                        const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                        const today = new Date(); today.setHours(0, 0, 0, 0);
+                        const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                          const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                        const list = all.filter(s => age(s) <= maxAge);
+                        const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                        const min = prices.length ? Math.min(...prices) : null;
+                        const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                        const fp = p => Number(p).toFixed(2);
+                        const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[0] ? 'block' : 'none'; ]]]
+                custom_fields:
+                  r:
+                    - width: 100%
+          r1:
+            card:
+              type: custom:button-card
+              entity: sensor.mbenzin_lpg_top5
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: url
+                url_path: |-
+                  [[[ const S = states['sensor.mbenzin_lpg_top5'];
+                    const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                    const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                      const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                    const list = all.filter(s => age(s) <= maxAge);
+                    const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                    const min = prices.length ? Math.min(...prices) : null;
+                    const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                    const fp = p => Number(p).toFixed(2);
+                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[1] ? list[1].maps : ''; ]]]
+              hold_action:
+                action: more-info
+                entity: sensor.mbenzin_lpg_home
+              custom_fields:
+                r: |-
+                  [[[
+                    const S = states['sensor.mbenzin_lpg_top5'];
+                    const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                    const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                      const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                    const list = all.filter(s => age(s) <= maxAge);
+                    const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                    const min = prices.length ? Math.min(...prices) : null;
+                    const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                    const fp = p => Number(p).toFixed(2);
+                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+                    const arrow = (t, size) => {
+                      if (!t) return { icon: 'mdi:minus', color: '#5b6270', txt: '—' };
+                      if (t.dir === 'down') return { icon: 'mdi:arrow-down-bold', color: '#5fd39a', txt: '−' + Math.abs(t.delta).toFixed(2) };
+                      if (t.dir === 'up') return { icon: 'mdi:arrow-up-bold', color: '#ff7a6b', txt: '+' + Math.abs(t.delta).toFixed(2) };
+                      return { icon: 'mdi:minus', color: '#f5c26b', txt: '0.00' };
+                    };
+                    const s = list[1];
+                    if (!s) return '';
+                    const best = Number(s.price) === min;
+                    const diff = Number(s.price) - min;
+                    const badge = best ? 'background:rgba(95,211,154,0.16);color:#5fd39a' : 'background:#23272f;color:#9aa1ad';
+                    const name = s.name || '—';
+                    const LOGOS = { orlen: 'orlen', makro: 'makro', tesco: 'tesco', eurobit: 'eurobit' };
+                    const lk = Object.keys(LOGOS).find(k => (name || '').toLowerCase().startsWith(k));
+                    const avatar = lk
+                      ? `<span style="position:relative;width:32px;height:32px;flex-shrink:0;display:block"><img src="/local/${LOGOS[lk]}.png?v=1" alt="${name}" onerror="this.style.display='none'" style="width:32px;height:32px;border-radius:999px;display:block;${best ? 'box-shadow:0 0 0 2px #5fd39a' : ''}"><span style="position:absolute;right:-5px;bottom:-5px;min-width:17px;height:17px;padding:0 3px;box-sizing:border-box;border-radius:999px;background:#0e1014;border:1px solid ${best ? '#5fd39a' : '#2a2f39'};color:${best ? '#5fd39a' : '#d6dae1'};font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">2</span></span>`
+                      : `<span style="width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;${badge}">2</span>`;
+                    const a0 = s.address || '';
+                    const addr = a0.startsWith(name) ? a0.slice(name.length).trim() : a0;
+                    const tr = arrow((s.trends || {})['1']);
+                    const home = s.home ? '<ha-icon icon="mdi:home" title="My station" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
+                    const when = age(s) <= 0 ? 'Today' : `<span style="color:#f5c26b">${upd(s)}</span>`;
+                    return `<div style="display:flex;align-items:center;gap:12px;width:100%">
+                      ${avatar}
+                      <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
+                        <span style="font-size:15px;font-weight:700;color:#eef0f3">${name}${home}</span>
+                        <span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${addr} · ${when}</span></div>
+                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="vs yesterday">
+                        <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
+                        <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
+                      <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px">
+                        <span style="font-size:18px;font-weight:800;color:${best ? '#5fd39a' : '#eef0f3'}">${fp(s.price)}</span>
+                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? 'Cheapest' : '+' + fp(diff)}</span></div>
+                      <ha-icon icon="mdi:chevron-right" style="--mdc-icon-size:18px;color:#5b6270;flex-shrink:0"></ha-icon>
+                    </div>`;
+                  ]]]
+              styles:
+                grid:
+                  - grid-template-areas: '"r"'
+                card:
+                  - padding: 12px 0
+                  - background: none
+                  - border: none
+                  - border-radius: '0'
+                  - border-top: '1px solid #23272f'
+                  - box-shadow: none
+                  - font-family: Manrope, system-ui, sans-serif
+                  - --ha-ripple-color: transparent
+                  - display: |-
+                      [[[ const S = states['sensor.mbenzin_lpg_top5'];
+                        const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                        const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                        const today = new Date(); today.setHours(0, 0, 0, 0);
+                        const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                          const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                        const list = all.filter(s => age(s) <= maxAge);
+                        const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                        const min = prices.length ? Math.min(...prices) : null;
+                        const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                        const fp = p => Number(p).toFixed(2);
+                        const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[1] ? 'block' : 'none'; ]]]
+                custom_fields:
+                  r:
+                    - width: 100%
+          r2:
+            card:
+              type: custom:button-card
+              entity: sensor.mbenzin_lpg_top5
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: url
+                url_path: |-
+                  [[[ const S = states['sensor.mbenzin_lpg_top5'];
+                    const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                    const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                      const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                    const list = all.filter(s => age(s) <= maxAge);
+                    const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                    const min = prices.length ? Math.min(...prices) : null;
+                    const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                    const fp = p => Number(p).toFixed(2);
+                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[2] ? list[2].maps : ''; ]]]
+              hold_action:
+                action: more-info
+                entity: sensor.mbenzin_lpg_home
+              custom_fields:
+                r: |-
+                  [[[
+                    const S = states['sensor.mbenzin_lpg_top5'];
+                    const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                    const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                      const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                    const list = all.filter(s => age(s) <= maxAge);
+                    const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                    const min = prices.length ? Math.min(...prices) : null;
+                    const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                    const fp = p => Number(p).toFixed(2);
+                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+                    const arrow = (t, size) => {
+                      if (!t) return { icon: 'mdi:minus', color: '#5b6270', txt: '—' };
+                      if (t.dir === 'down') return { icon: 'mdi:arrow-down-bold', color: '#5fd39a', txt: '−' + Math.abs(t.delta).toFixed(2) };
+                      if (t.dir === 'up') return { icon: 'mdi:arrow-up-bold', color: '#ff7a6b', txt: '+' + Math.abs(t.delta).toFixed(2) };
+                      return { icon: 'mdi:minus', color: '#f5c26b', txt: '0.00' };
+                    };
+                    const s = list[2];
+                    if (!s) return '';
+                    const best = Number(s.price) === min;
+                    const diff = Number(s.price) - min;
+                    const badge = best ? 'background:rgba(95,211,154,0.16);color:#5fd39a' : 'background:#23272f;color:#9aa1ad';
+                    const name = s.name || '—';
+                    const LOGOS = { orlen: 'orlen', makro: 'makro', tesco: 'tesco', eurobit: 'eurobit' };
+                    const lk = Object.keys(LOGOS).find(k => (name || '').toLowerCase().startsWith(k));
+                    const avatar = lk
+                      ? `<span style="position:relative;width:32px;height:32px;flex-shrink:0;display:block"><img src="/local/${LOGOS[lk]}.png?v=1" alt="${name}" onerror="this.style.display='none'" style="width:32px;height:32px;border-radius:999px;display:block;${best ? 'box-shadow:0 0 0 2px #5fd39a' : ''}"><span style="position:absolute;right:-5px;bottom:-5px;min-width:17px;height:17px;padding:0 3px;box-sizing:border-box;border-radius:999px;background:#0e1014;border:1px solid ${best ? '#5fd39a' : '#2a2f39'};color:${best ? '#5fd39a' : '#d6dae1'};font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">3</span></span>`
+                      : `<span style="width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;${badge}">3</span>`;
+                    const a0 = s.address || '';
+                    const addr = a0.startsWith(name) ? a0.slice(name.length).trim() : a0;
+                    const tr = arrow((s.trends || {})['1']);
+                    const home = s.home ? '<ha-icon icon="mdi:home" title="My station" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
+                    const when = age(s) <= 0 ? 'Today' : `<span style="color:#f5c26b">${upd(s)}</span>`;
+                    return `<div style="display:flex;align-items:center;gap:12px;width:100%">
+                      ${avatar}
+                      <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
+                        <span style="font-size:15px;font-weight:700;color:#eef0f3">${name}${home}</span>
+                        <span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${addr} · ${when}</span></div>
+                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="vs yesterday">
+                        <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
+                        <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
+                      <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px">
+                        <span style="font-size:18px;font-weight:800;color:${best ? '#5fd39a' : '#eef0f3'}">${fp(s.price)}</span>
+                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? 'Cheapest' : '+' + fp(diff)}</span></div>
+                      <ha-icon icon="mdi:chevron-right" style="--mdc-icon-size:18px;color:#5b6270;flex-shrink:0"></ha-icon>
+                    </div>`;
+                  ]]]
+              styles:
+                grid:
+                  - grid-template-areas: '"r"'
+                card:
+                  - padding: 12px 0
+                  - background: none
+                  - border: none
+                  - border-radius: '0'
+                  - border-top: '1px solid #23272f'
+                  - box-shadow: none
+                  - font-family: Manrope, system-ui, sans-serif
+                  - --ha-ripple-color: transparent
+                  - display: |-
+                      [[[ const S = states['sensor.mbenzin_lpg_top5'];
+                        const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                        const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                        const today = new Date(); today.setHours(0, 0, 0, 0);
+                        const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                          const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                        const list = all.filter(s => age(s) <= maxAge);
+                        const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                        const min = prices.length ? Math.min(...prices) : null;
+                        const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                        const fp = p => Number(p).toFixed(2);
+                        const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[2] ? 'block' : 'none'; ]]]
+                custom_fields:
+                  r:
+                    - width: 100%
+          r3:
+            card:
+              type: custom:button-card
+              entity: sensor.mbenzin_lpg_top5
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: url
+                url_path: |-
+                  [[[ const S = states['sensor.mbenzin_lpg_top5'];
+                    const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                    const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                      const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                    const list = all.filter(s => age(s) <= maxAge);
+                    const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                    const min = prices.length ? Math.min(...prices) : null;
+                    const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                    const fp = p => Number(p).toFixed(2);
+                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[3] ? list[3].maps : ''; ]]]
+              hold_action:
+                action: more-info
+                entity: sensor.mbenzin_lpg_home
+              custom_fields:
+                r: |-
+                  [[[
+                    const S = states['sensor.mbenzin_lpg_top5'];
+                    const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                    const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                      const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                    const list = all.filter(s => age(s) <= maxAge);
+                    const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                    const min = prices.length ? Math.min(...prices) : null;
+                    const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                    const fp = p => Number(p).toFixed(2);
+                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+                    const arrow = (t, size) => {
+                      if (!t) return { icon: 'mdi:minus', color: '#5b6270', txt: '—' };
+                      if (t.dir === 'down') return { icon: 'mdi:arrow-down-bold', color: '#5fd39a', txt: '−' + Math.abs(t.delta).toFixed(2) };
+                      if (t.dir === 'up') return { icon: 'mdi:arrow-up-bold', color: '#ff7a6b', txt: '+' + Math.abs(t.delta).toFixed(2) };
+                      return { icon: 'mdi:minus', color: '#f5c26b', txt: '0.00' };
+                    };
+                    const s = list[3];
+                    if (!s) return '';
+                    const best = Number(s.price) === min;
+                    const diff = Number(s.price) - min;
+                    const badge = best ? 'background:rgba(95,211,154,0.16);color:#5fd39a' : 'background:#23272f;color:#9aa1ad';
+                    const name = s.name || '—';
+                    const LOGOS = { orlen: 'orlen', makro: 'makro', tesco: 'tesco', eurobit: 'eurobit' };
+                    const lk = Object.keys(LOGOS).find(k => (name || '').toLowerCase().startsWith(k));
+                    const avatar = lk
+                      ? `<span style="position:relative;width:32px;height:32px;flex-shrink:0;display:block"><img src="/local/${LOGOS[lk]}.png?v=1" alt="${name}" onerror="this.style.display='none'" style="width:32px;height:32px;border-radius:999px;display:block;${best ? 'box-shadow:0 0 0 2px #5fd39a' : ''}"><span style="position:absolute;right:-5px;bottom:-5px;min-width:17px;height:17px;padding:0 3px;box-sizing:border-box;border-radius:999px;background:#0e1014;border:1px solid ${best ? '#5fd39a' : '#2a2f39'};color:${best ? '#5fd39a' : '#d6dae1'};font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">4</span></span>`
+                      : `<span style="width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;${badge}">4</span>`;
+                    const a0 = s.address || '';
+                    const addr = a0.startsWith(name) ? a0.slice(name.length).trim() : a0;
+                    const tr = arrow((s.trends || {})['1']);
+                    const home = s.home ? '<ha-icon icon="mdi:home" title="My station" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
+                    const when = age(s) <= 0 ? 'Today' : `<span style="color:#f5c26b">${upd(s)}</span>`;
+                    return `<div style="display:flex;align-items:center;gap:12px;width:100%">
+                      ${avatar}
+                      <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
+                        <span style="font-size:15px;font-weight:700;color:#eef0f3">${name}${home}</span>
+                        <span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${addr} · ${when}</span></div>
+                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="vs yesterday">
+                        <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
+                        <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
+                      <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px">
+                        <span style="font-size:18px;font-weight:800;color:${best ? '#5fd39a' : '#eef0f3'}">${fp(s.price)}</span>
+                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? 'Cheapest' : '+' + fp(diff)}</span></div>
+                      <ha-icon icon="mdi:chevron-right" style="--mdc-icon-size:18px;color:#5b6270;flex-shrink:0"></ha-icon>
+                    </div>`;
+                  ]]]
+              styles:
+                grid:
+                  - grid-template-areas: '"r"'
+                card:
+                  - padding: 12px 0
+                  - background: none
+                  - border: none
+                  - border-radius: '0'
+                  - border-top: '1px solid #23272f'
+                  - box-shadow: none
+                  - font-family: Manrope, system-ui, sans-serif
+                  - --ha-ripple-color: transparent
+                  - display: |-
+                      [[[ const S = states['sensor.mbenzin_lpg_top5'];
+                        const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                        const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                        const today = new Date(); today.setHours(0, 0, 0, 0);
+                        const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                          const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                        const list = all.filter(s => age(s) <= maxAge);
+                        const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                        const min = prices.length ? Math.min(...prices) : null;
+                        const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                        const fp = p => Number(p).toFixed(2);
+                        const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[3] ? 'block' : 'none'; ]]]
+                custom_fields:
+                  r:
+                    - width: 100%
+          r4:
+            card:
+              type: custom:button-card
+              entity: sensor.mbenzin_lpg_top5
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: url
+                url_path: |-
+                  [[[ const S = states['sensor.mbenzin_lpg_top5'];
+                    const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                    const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                      const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                    const list = all.filter(s => age(s) <= maxAge);
+                    const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                    const min = prices.length ? Math.min(...prices) : null;
+                    const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                    const fp = p => Number(p).toFixed(2);
+                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[4] ? list[4].maps : ''; ]]]
+              hold_action:
+                action: more-info
+                entity: sensor.mbenzin_lpg_home
+              custom_fields:
+                r: |-
+                  [[[
+                    const S = states['sensor.mbenzin_lpg_top5'];
+                    const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                    const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                      const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                    const list = all.filter(s => age(s) <= maxAge);
+                    const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                    const min = prices.length ? Math.min(...prices) : null;
+                    const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                    const fp = p => Number(p).toFixed(2);
+                    const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); };
+                    const arrow = (t, size) => {
+                      if (!t) return { icon: 'mdi:minus', color: '#5b6270', txt: '—' };
+                      if (t.dir === 'down') return { icon: 'mdi:arrow-down-bold', color: '#5fd39a', txt: '−' + Math.abs(t.delta).toFixed(2) };
+                      if (t.dir === 'up') return { icon: 'mdi:arrow-up-bold', color: '#ff7a6b', txt: '+' + Math.abs(t.delta).toFixed(2) };
+                      return { icon: 'mdi:minus', color: '#f5c26b', txt: '0.00' };
+                    };
+                    const s = list[4];
+                    if (!s) return '';
+                    const best = Number(s.price) === min;
+                    const diff = Number(s.price) - min;
+                    const badge = best ? 'background:rgba(95,211,154,0.16);color:#5fd39a' : 'background:#23272f;color:#9aa1ad';
+                    const name = s.name || '—';
+                    const LOGOS = { orlen: 'orlen', makro: 'makro', tesco: 'tesco', eurobit: 'eurobit' };
+                    const lk = Object.keys(LOGOS).find(k => (name || '').toLowerCase().startsWith(k));
+                    const avatar = lk
+                      ? `<span style="position:relative;width:32px;height:32px;flex-shrink:0;display:block"><img src="/local/${LOGOS[lk]}.png?v=1" alt="${name}" onerror="this.style.display='none'" style="width:32px;height:32px;border-radius:999px;display:block;${best ? 'box-shadow:0 0 0 2px #5fd39a' : ''}"><span style="position:absolute;right:-5px;bottom:-5px;min-width:17px;height:17px;padding:0 3px;box-sizing:border-box;border-radius:999px;background:#0e1014;border:1px solid ${best ? '#5fd39a' : '#2a2f39'};color:${best ? '#5fd39a' : '#d6dae1'};font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">5</span></span>`
+                      : `<span style="width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;${badge}">5</span>`;
+                    const a0 = s.address || '';
+                    const addr = a0.startsWith(name) ? a0.slice(name.length).trim() : a0;
+                    const tr = arrow((s.trends || {})['1']);
+                    const home = s.home ? '<ha-icon icon="mdi:home" title="My station" style="--mdc-icon-size:14px;color:#4cc3d9;margin-left:6px"></ha-icon>' : '';
+                    const when = age(s) <= 0 ? 'Today' : `<span style="color:#f5c26b">${upd(s)}</span>`;
+                    return `<div style="display:flex;align-items:center;gap:12px;width:100%">
+                      ${avatar}
+                      <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
+                        <span style="font-size:15px;font-weight:700;color:#eef0f3">${name}${home}</span>
+                        <span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${addr} · ${when}</span></div>
+                      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px;gap:0" title="vs yesterday">
+                        <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
+                        <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
+                      <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px">
+                        <span style="font-size:18px;font-weight:800;color:${best ? '#5fd39a' : '#eef0f3'}">${fp(s.price)}</span>
+                        <span style="font-size:11px;font-weight:600;color:${best ? '#5fd39a' : '#9aa1ad'}">${best ? 'Cheapest' : '+' + fp(diff)}</span></div>
+                      <ha-icon icon="mdi:chevron-right" style="--mdc-icon-size:18px;color:#5b6270;flex-shrink:0"></ha-icon>
+                    </div>`;
+                  ]]]
+              styles:
+                grid:
+                  - grid-template-areas: '"r"'
+                card:
+                  - padding: 12px 0
+                  - background: none
+                  - border: none
+                  - border-radius: '0'
+                  - border-top: '1px solid #23272f'
+                  - box-shadow: none
+                  - font-family: Manrope, system-ui, sans-serif
+                  - --ha-ripple-color: transparent
+                  - display: |-
+                      [[[ const S = states['sensor.mbenzin_lpg_top5'];
+                        const all = (S && Array.isArray(S.attributes.stations)) ? S.attributes.stations : [];
+                        const maxAge = (S && S.attributes.max_age_days != null) ? Number(S.attributes.max_age_days) : 1;
+                        const today = new Date(); today.setHours(0, 0, 0, 0);
+                        const age = s => { if (!s.updated_date) return s.updated === 'Dnes' ? 0 : 99;
+                          const d = new Date(s.updated_date + 'T00:00:00'); return Math.round((today - d) / 86400000); };
+                        const list = all.filter(s => age(s) <= maxAge);
+                        const prices = list.map(s => Number(s.price)).filter(p => !isNaN(p));
+                        const min = prices.length ? Math.min(...prices) : null;
+                        const unit = (S && S.attributes.unit_of_measurement) || 'Kč/l';
+                        const fp = p => Number(p).toFixed(2);
+                        const upd = s => { const a = age(s); return a <= 0 ? 'Today' : (a === 1 ? 'Yesterday' : (s.updated || '—')); }; return list[4] ? 'block' : 'none'; ]]]
+                custom_fields:
+                  r:
+                    - width: 100%
+        styles:
+          grid:
+            - grid-template-areas: '"head" "r0" "r1" "r2" "r3" "r4" "foot"'
+            - grid-template-columns: 1fr
+            - row-gap: 0px
+          card:
+            - padding: 16px
+            - background: '#171a20'
+            - border: '1px solid #262a33'
+            - border-radius: 22px
+            - box-shadow: none
+            - font-family: Manrope, system-ui, sans-serif
+            - color: '#eef0f3'
+            - --ha-ripple-color: transparent
+          custom_fields:
+            head:
+              - width: 100%
+              - padding-bottom: 12px
+            foot:
+              - justify-self: start
+              - padding-top: 12px
+              - border-top: '1px solid #23272f'
+              - width: 100%
+            r0:
+              - width: 100%
+            r1:
+              - width: 100%
+            r2:
+              - width: 100%
+            r3:
+              - width: 100%
+            r4:
+              - width: 100%
+        grid_options:
+          columns: full
+  - type: grid
+    cards:
+      - type: map
+        theme_mode: dark
+        auto_fit: true
+        default_zoom: 12
+        hours_to_show: 0
+        entities:
+          - entity: sensor.mbenzin_lpg_1
+            label_mode: state
+            focus: true
+          - entity: sensor.mbenzin_lpg_2
+            label_mode: state
+            focus: true
+          - entity: sensor.mbenzin_lpg_3
+            label_mode: state
+            focus: true
+          - entity: sensor.mbenzin_lpg_4
+            label_mode: state
+            focus: true
+          - entity: sensor.mbenzin_lpg_5
+            label_mode: state
+            focus: true
+          - entity: sensor.mbenzin_lpg_home
+            name: My station
+            label_mode: state
+            focus: true
+        grid_options:
+          columns: full
+          rows: 7
+      - type: statistics-graph
+        title: My station · last 30 days
+        entities:
+          - entity: sensor.mbenzin_lpg_home
+            name: My station
+        days_to_show: 30
+        period: day
+        chart_type: line
+        stat_types:
+          - mean
+          - min
+          - max
+        hide_legend: false
+        grid_options:
+          columns: full
+header:
+  layout: start
+  badges_position: bottom
+  badges_wrap: wrap
