@@ -1,5 +1,7 @@
 # ⛽ mBenzin – Czech fuel prices for Home Assistant
 
+**English** · [Česky](README.cs.md)
+
 A HACS integration that shows the cheapest stations of **your city** for the fuel(s) you use — **Natural 95, Diesel, LPG, CNG** and more — plus **your favourite station** with price history and trends. Everything is configured from the Home Assistant UI.
 
 ![Dashboard](docs/screenshot.webp)
@@ -11,7 +13,7 @@ A HACS integration that shows the cheapest stations of **your city** for the fue
 - Pick your **city**, one or **several fuels** (e.g. Natural 95 + LPG for a dual-fuel car) and a **favourite station per fuel**
 - Per fuel: the **top 5 cheapest** stations in the city (only that city, not the region), with a Google Maps link, and a **map**
 - Favourite station: price, **trends vs 1/2/7/14/30 days ago**, rank in town, long-term statistics (the 30-day graph)
-- Ready-made **dashboard views** (one per fuel), optional
+- Ready-made **dashboard views** (one per fuel), optional, in **English or Czech** (your choice during setup)
 - Stale prices are hidden (older than yesterday for petrol/diesel, 3 days for CNG, 7 days for LPG/AdBlue)
 
 ## 1. Get your access key (free)
@@ -29,10 +31,12 @@ mBenzin blocks plain scraping with a browser check, but they give a **personal a
 3. Settings → Devices & services → **Add integration** → **mBenzin**, then:
    1. paste your **access key**
    2. choose your **city**
-   3. choose your **fuel(s)**
+   3. choose your **fuel(s)** and the **language** of the dashboard texts (English / Čeština)
    4. for each fuel, choose your **favourite station** from the list of stations of your city (or "—" for none)
 
-You can change the fuels and favourite stations later: the integration's **Configure** button.
+You can change the fuels, the language and the favourite stations later: the integration's **Configure** button.
+
+> The setup screens follow Home Assistant's own language (English and Czech are provided). The language chosen in step 3 only sets the labels of the ready-made dashboard views.
 
 ## Entities
 
@@ -61,14 +65,9 @@ For a notification when your station's price changes, see `examples/price_alert.
 - Entity ids are `sensor.mbenzin_<fuel>_…`. A second city would get a `_2` suffix.
 - The daily price log used for the trends is stored by Home Assistant and fills up over time (a `*` in the view marks a trend computed from a shorter history).
 
-## 🇨🇿 Stručně česky
+## 🇨🇿 Česky
 
-Integrace pro HACS: ceny paliv z [mBenzin.cz](https://www.mbenzin.cz) ve vašem městě — **Natural 95, nafta, LPG, CNG** — žebříček 5 nejlevnějších stanic, mapa a vaše **oblíbená stanice** s historií a trendy. Vše se nastaví v rozhraní Home Assistantu: **klíč → město → paliva (i více, např. benzín + LPG) → oblíbená stanice pro každé palivo**.
-
-- Klíč je zdarma, ale **každý si žádá vlastní**: napište na **reklama@mbenzin.cz**, k čemu ceny používáte, o které město/stanice jde a jak často je načítáte. Klíč nikomu nesdílejte.
-- Limit je 20 stránek za hodinu; integrace volá web jen 4× denně pro každé palivo.
-- Instalace: HACS → Vlastní repozitáře → `https://github.com/donthedandy/ha-mbenzin-ceny-paliv` (Integration) → stáhnout → restart → Přidat integraci **mBenzin**.
-- Hotové pohledy na dashboard najdete ve složce `dashboard/` (vyžadují `button-card`).
+Úplný český popis (získání klíče, instalace přes HACS, senzory, dashboard) najdete v **[README.cs.md](README.cs.md)**. Stručně: klíč zdarma na reklama@mbenzin.cz, HACS → Vlastní repozitáře → `https://github.com/donthedandy/ha-mbenzin-ceny-paliv` (Integrace) → restart → Přidat integraci **mBenzin**.
 
 ## License
 
