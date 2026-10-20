@@ -8,14 +8,17 @@ from typing import Any
 import aiohttp
 
 from .const import (
+    DEFAULT_LANGUAGE,
     FLAT,
     FUELS,
     HISTORY_DAYS,
+    LABELS,
     MAPS,
     MAX_AGE_DAYS_BY_FUEL,
     MAX_AGE_DAYS_DEFAULT,
     PERIODS,
     TOP,
+    UPDATE_INTERVAL,
     URL,
     USER_AGENT,
 )
@@ -141,6 +144,7 @@ def build_payload(
     home_slug: str | None,
     history: dict[str, list[list]],
     now: dt.datetime,
+    language: str = DEFAULT_LANGUAGE,
 ) -> dict[str, Any]:
     """Top stations of the city + the favourite station, with trends.
 
@@ -215,4 +219,7 @@ def build_payload(
         "fuel_label": label,
         "unit": unit,
         "city_name": pretty(city),
+        "language": language,
+        "labels": LABELS.get(language, LABELS[DEFAULT_LANGUAGE]),
+        "next_update": (now + UPDATE_INTERVAL).isoformat(timespec="seconds"),
     }

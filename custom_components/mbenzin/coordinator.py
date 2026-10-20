@@ -12,7 +12,17 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .api import MBenzinError, async_fetch_markers, build_payload
-from .const import CONF_CITY, CONF_FUELS, CONF_HOMES, CONF_KEY, DEFAULT_FUELS, DOMAIN, UPDATE_INTERVAL
+from .const import (
+    CONF_CITY,
+    CONF_FUELS,
+    CONF_HOMES,
+    CONF_KEY,
+    CONF_LANGUAGE,
+    DEFAULT_FUELS,
+    DEFAULT_LANGUAGE,
+    DOMAIN,
+    UPDATE_INTERVAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,6 +47,10 @@ class MBenzinCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
     def homes(self) -> dict[str, str]:
         return dict(self.config_entry.options.get(CONF_HOMES, {}))
 
+    @property
+    def language(self) -> str:
+        return self.config_entry.options.get(CONF_LANGUAGE, DEFAULT_LANGUAGE)
+
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
         if self._history is None:
             self._history = await self._store.async_load() or {}
@@ -58,7 +72,12 @@ class MBenzinCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 if previous is None:
                     continue
                 # keep the last good data and flag the failure (the dashboard shows it)
-                result[fuel] = {**previous, "fetch_error": err_name, "last_attempt": now.isoformat(timespec="seconds")}
+                result[fuel] = {
+                    **previous,
+                    "fetch_error": err_name,
+                    "last_attempt": now.isoformat(timespec="seconds"),
+                    "next_update": (now + UPDATE_INTERVAL).isoformat(timespec="seconds"),
+                }
                 continue
             result[fuel] = build_payload(
                 markers,
@@ -67,6 +86,7 @@ class MBenzinCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 home_slug=homes.get(fuel),
                 history=self._history.setdefault(fuel, {}),
                 now=now,
+                language=self.language,
             )
 
         if not result:

@@ -32,10 +32,13 @@ from .const import (
     CONF_FUELS,
     CONF_HOMES,
     CONF_KEY,
+    CONF_LANGUAGE,
     CONF_STATION,
     DEFAULT_FUELS,
+    DEFAULT_LANGUAGE,
     DOMAIN,
     FUELS,
+    LANGUAGES,
     NONE_VALUE,
 )
 
@@ -54,10 +57,12 @@ class _FuelStationSteps:
     _key: str
     _city: str
     _fuels: list[str]
+    _language: str
     _queue: list[str]
     _homes: dict[str, str]
     _stations: dict[str, list[dict[str, str]]]
     _defaults_fuels: list[str] = DEFAULT_FUELS
+    _defaults_language: str | None = None
     _defaults_homes: dict[str, str] = {}
 
     async def async_step_fuels(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
@@ -76,6 +81,7 @@ class _FuelStationSteps:
                     errors["base"] = _error_key(err)
                 else:
                     self._fuels, self._stations = fuels, stations
+                    self._language = user_input[CONF_LANGUAGE]
                     self._queue, self._homes = list(fuels), {}
                     return await self.async_step_station()
         schema = vol.Schema(
@@ -86,10 +92,23 @@ class _FuelStationSteps:
                         multiple=True,
                         mode=SelectSelectorMode.LIST,
                     )
-                )
+                ),
+                vol.Required(CONF_LANGUAGE, default=self._default_language()): SelectSelector(
+                    SelectSelectorConfig(
+                        options=[{"value": k, "label": v} for k, v in LANGUAGES.items()],
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
             }
         )
         return self.async_show_form(step_id="fuels", data_schema=schema, errors=errors)
+
+    def _default_language(self) -> str:
+        """Language of the dashboard texts: the saved one, else Home Assistant's own language."""
+        if self._defaults_language in LANGUAGES:
+            return self._defaults_language
+        ha_language = (self.hass.config.language or DEFAULT_LANGUAGE).split("-")[0]
+        return ha_language if ha_language in LANGUAGES else DEFAULT_LANGUAGE
 
     async def async_step_station(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         fuel = self._queue[0]
@@ -162,7 +181,7 @@ class MBenzinConfigFlow(_FuelStationSteps, ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(
             title=f"mBenzin {pretty(self._city)}",
             data={CONF_KEY: self._key, CONF_CITY: self._city},
-            options={CONF_FUELS: self._fuels, CONF_HOMES: self._homes},
+            options={CONF_FUELS: self._fuels, CONF_HOMES: self._homes, CONF_LANGUAGE: self._language},
         )
 
     @staticmethod
@@ -180,7 +199,10 @@ class MBenzinOptionsFlow(_FuelStationSteps, OptionsFlow):
         self._city = entry.data[CONF_CITY]
         self._defaults_fuels = list(entry.options.get(CONF_FUELS, DEFAULT_FUELS))
         self._defaults_homes = dict(entry.options.get(CONF_HOMES, {}))
+        self._defaults_language = entry.options.get(CONF_LANGUAGE)
         return await self.async_step_fuels()
 
     async def _async_finish(self) -> ConfigFlowResult:
-        return self.async_create_entry(data={CONF_FUELS: self._fuels, CONF_HOMES: self._homes})
+        return self.async_create_entry(
+            data={CONF_FUELS: self._fuels, CONF_HOMES: self._homes, CONF_LANGUAGE: self._language}
+        )

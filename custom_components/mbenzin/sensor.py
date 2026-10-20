@@ -32,6 +32,9 @@ TOP_ATTRIBUTES = (
     "fuel_label",
     "unit",
     "city_name",
+    "language",
+    "labels",
+    "next_update",
 )
 HOME_ATTRIBUTES = ("updated", "updated_date", "age_days", "rank", "fresh_count", "vs_cheapest", "cheapest_name", "trends", "maps")
 
