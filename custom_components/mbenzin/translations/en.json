@@ -3,50 +3,75 @@
     "step": {
       "user": {
         "title": "mBenzin access key",
-        "description": "Enter your personal mBenzin key. mBenzin gives it free to Home Assistant users: e-mail reklama@mbenzin.cz, say what the prices are for, which city/stations and how often you load them. Never share the key.",
-        "data": { "key": "Access key" }
+        "description": "Enter your personal access key for mBenzin.cz. You can get it for free by e-mail: write to reklama@mbenzin.cz, say you use the prices in Home Assistant, for which city or stations, and how often you load them. The key is personal, never share it.",
+        "data": {
+          "key": "Access key"
+        },
+        "data_description": {
+          "key": "The key mBenzin.cz sent you. Paste it whole, without spaces."
+        }
       },
       "city": {
         "title": "City",
-        "description": "Only the stations of this city are shown.",
-        "data": { "city": "City" }
+        "description": "Choose your city. Only the stations of this city are shown, not those of the whole region.",
+        "data": {
+          "city": "City"
+        }
       },
       "fuels": {
-        "title": "Fuels",
-        "description": "Pick one or more fuels (for example Natural 95 + LPG for a dual-fuel car). Each fuel makes its own sensors.",
-        "data": { "fuels": "Fuels" }
+        "title": "Fuels and language",
+        "description": "Pick one or more fuels – for example Natural 95 and LPG for a dual-fuel car. Each fuel gets its own sensors. Note that mBenzin does not distinguish E10: the Natural 95 price applies to all 95-octane petrol.",
+        "data": {
+          "fuels": "Fuels",
+          "language": "Language of the dashboard texts"
+        },
+        "data_description": {
+          "language": "Sets the language of the labels in the ready-made dashboard views (for example \"My station\"). The language of this setup follows Home Assistant's language."
+        }
       },
       "station": {
         "title": "Favourite station – {fuel}",
-        "description": "Your usual station in {city} for {fuel}. It gets its own sensor with price history and trends. Leave \"—\" for none.",
-        "data": { "station": "Favourite station" }
+        "description": "Your usual station in {city} for {fuel}. It gets its own sensor with price history, trends and its rank in town. Leave \"—\" for none.",
+        "data": {
+          "station": "Favourite station"
+        }
       }
     },
     "error": {
-      "invalid_auth": "The key was not accepted by mBenzin.",
-      "cannot_connect": "Cannot reach mBenzin.cz.",
-      "rate_limited": "mBenzin returned HTTP 429 (limit of 20 pages per hour). Try again later.",
+      "invalid_auth": "mBenzin did not accept the key. Check that it is pasted whole and without spaces.",
+      "cannot_connect": "Cannot reach mBenzin.cz. Please try again.",
+      "rate_limited": "mBenzin returned HTTP 429 (limit: 20 pages per hour). Try again in a moment.",
       "no_fuel": "Pick at least one fuel."
     },
-    "abort": { "already_configured": "This city is already configured." }
+    "abort": {
+      "already_configured": "This city is already configured."
+    }
   },
   "options": {
     "step": {
       "fuels": {
-        "title": "Fuels",
-        "description": "Pick one or more fuels. Each fuel makes its own sensors.",
-        "data": { "fuels": "Fuels" }
+        "title": "Fuels and language",
+        "description": "Pick one or more fuels – for example Natural 95 and LPG for a dual-fuel car. Each fuel gets its own sensors. Note that mBenzin does not distinguish E10: the Natural 95 price applies to all 95-octane petrol.",
+        "data": {
+          "fuels": "Fuels",
+          "language": "Language of the dashboard texts"
+        },
+        "data_description": {
+          "language": "Sets the language of the labels in the ready-made dashboard views (for example \"My station\"). The language of this setup follows Home Assistant's language."
+        }
       },
       "station": {
         "title": "Favourite station – {fuel}",
         "description": "Your usual station in {city} for {fuel}. Leave \"—\" for none.",
-        "data": { "station": "Favourite station" }
+        "data": {
+          "station": "Favourite station"
+        }
       }
     },
     "error": {
-      "invalid_auth": "The key was not accepted by mBenzin.",
-      "cannot_connect": "Cannot reach mBenzin.cz.",
-      "rate_limited": "mBenzin returned HTTP 429 (limit of 20 pages per hour). Try again later.",
+      "invalid_auth": "mBenzin did not accept the key. Check that it is pasted whole and without spaces.",
+      "cannot_connect": "Cannot reach mBenzin.cz. Please try again.",
+      "rate_limited": "mBenzin returned HTTP 429 (limit: 20 pages per hour). Try again in a moment.",
       "no_fuel": "Pick at least one fuel."
     }
   }
