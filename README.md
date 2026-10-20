@@ -114,7 +114,7 @@ Each station in the `stations` attribute of `sensor.ceny_paliv_<fuel>_top5` has:
 
 - **E10** is not distinguished by mBenzin: "Natural 95" is the price shown for 95-octane petrol.
 - Entity ids are `sensor.ceny_paliv_<fuel>_…`. A second city would get a `_2` suffix.
-- The daily price log used for the trends is stored by Home Assistant and fills up over time (a `*` in the view marks a trend computed from a shorter history).
+- The daily price log used for the trends is stored by Home Assistant and fills up over time (a `*` next to a trend in the card marks a trend computed from a shorter history).
 
 ## 🇨🇿 Česky
 

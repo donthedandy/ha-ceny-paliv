@@ -52,7 +52,7 @@ Pro každé palivo `<palivo>` (`n95`, `benzinplus`, `diesel`, `dieselplus`, `lpg
 
 | Entita | Co obsahuje |
 |---|---|
-| `sensor.ceny_paliv_<palivo>_top5` | cena nejlevnější stanice; v atributech je všech 5 stanic (název, adresa, cena, souřadnice, odkaz na Google Maps, trendy…) a texty v zvoleném jazyce |
+| `sensor.ceny_paliv_<palivo>_top5` | cena nejlevnější stanice; v atributech je všech 5 stanic (název, adresa, cena, souřadnice, odkaz na Google Maps, trendy…) a texty ve zvoleném jazyce |
 | `sensor.ceny_paliv_<palivo>_home` | cena u vaší oblíbené stanice (jen pokud jste nějakou vybrali), trendy, pořadí, statistika |
 | `sensor.ceny_paliv_<palivo>_1` … `_5` | 5 nejlevnějších stanic se zeměpisnou šířkou a délkou pro kartu mapy |
 
@@ -120,7 +120,7 @@ Každá stanice v atributu `stations` senzoru `sensor.ceny_paliv_<palivo>_top5` 
 
 - **E10** mBenzin nerozlišuje: u Natural 95 jde o cenu pro všechny 95oktanové benzíny.
 - Entity se jmenují `sensor.ceny_paliv_<palivo>_…`. Druhé město by dostalo příponu `_2`.
-- Denní záznam cen potřebný pro trendy ukládá Home Assistant a postupně se plní (hvězdička v pohledu označuje trend z kratší historie).
+- Denní záznam cen potřebný pro trendy ukládá Home Assistant a postupně se plní (hvězdička u trendu v kartě označuje trend z kratší historie).
 
 ## Licence
 
