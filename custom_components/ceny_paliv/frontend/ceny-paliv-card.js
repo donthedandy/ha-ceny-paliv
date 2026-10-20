@@ -19,7 +19,7 @@
  *
  * Texts come from the language chosen in the integration setup (attribute `labels` of the top5 sensor).
  */
-const CARD_VERSION = '0.4.0';
+const CARD_VERSION = '0.4.1';
 
 const PARTS = ['home', 'list', 'map', 'graph'];
 
@@ -28,15 +28,12 @@ const norm = (s) => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300
 
 const STYLE = `
   :host { display: block; }
-  .wrap { container-type: inline-size; }
   .grid, .col { display: flex; flex-direction: column; gap: 16px; }
   .col { min-width: 0; }
   .grid.columns { flex-direction: row; align-items: flex-start; }
   .grid.columns > .col { flex: 1 1 0; }
-  @container (min-width: 640px) {
-    .grid.auto { flex-direction: row; align-items: flex-start; }
-    .grid.auto > .col { flex: 1 1 0; }
-  }
+  .grid.auto.wide { flex-direction: row; align-items: flex-start; }
+  .grid.auto.wide > .col { flex: 1 1 0; }
   .card { background: #171a20; border: 1px solid #262a33; border-radius: 22px; padding: 16px; color: #eef0f3;
           font-family: Manrope, system-ui, sans-serif; box-sizing: border-box; }
   .card.compact { padding: 12px 14px; border-radius: 18px; }
@@ -45,7 +42,7 @@ const STYLE = `
   .compact .row { padding: 7px 0; gap: 10px; }
   .row:first-of-type { border-top: none; }
   .map, .graph { border-radius: 22px; overflow: hidden; }
-  .map.fixed { position: relative; }
+  .map.fixed { position: relative; min-width: 200px; }
   .map.fixed > * { position: absolute; inset: 0; display: block; }
   ha-icon { display: inline-block; }
 `;
@@ -61,7 +58,9 @@ class CenyPalivCard extends HTMLElement {
 
   setConfig(config) {
     if (!config || !config.fuel) throw new Error('ceny-paliv-card: set "fuel", for example "n95"');
-    const show = (Array.isArray(config.show) ? config.show : config.show ? [config.show] : PARTS).filter((p) => PARTS.includes(p));
+    // show_map / show_graph: options of the first versions, still honoured when `show` is not set
+    const legacy = PARTS.filter((p) => !(p === 'map' && config.show_map === false) && !(p === 'graph' && config.show_graph === false));
+    const show = (Array.isArray(config.show) ? config.show : config.show ? [config.show] : legacy).filter((p) => PARTS.includes(p));
     this._config = Object.assign({ layout: 'auto', stations: 5, compact: false, logo_path: '' }, config);
     this._show = show.length ? show : PARTS;
     this._layout = ['auto', 'columns', 'stack'].includes(this._config.layout) ? this._config.layout : 'auto';
@@ -168,6 +167,26 @@ class CenyPalivCard extends HTMLElement {
     root.addEventListener('pointerdown', (e) => this._down(e));
     ['pointerup', 'pointerleave', 'pointercancel'].forEach((n) => root.addEventListener(n, () => clearTimeout(this._timer)));
     this._extraReady = false;
+    this._fit();
+  }
+
+  // layout "auto": two columns from 640 px (back to one below 600 px, so it never flip-flops)
+  _fit() {
+    const grid = this.shadowRoot.querySelector('.grid');
+    if (!grid || !grid.classList.contains('auto')) return;
+    const w = this.getBoundingClientRect().width;
+    if (w >= 640) grid.classList.add('wide');
+    else if (w < 600) grid.classList.remove('wide');
+  }
+
+  connectedCallback() {
+    if (!this._ro && window.ResizeObserver) this._ro = new ResizeObserver(() => this._fit());
+    if (this._ro) this._ro.observe(this);
+    this._fit();
+  }
+
+  disconnectedCallback() {
+    if (this._ro) this._ro.disconnect();
   }
 
   async _buildExtra() {
