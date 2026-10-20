@@ -1,0 +1,18 @@
+{
+  "domain": "ceny_paliv",
+  "name": "Ceny paliv",
+  "codeowners": [
+    "@donthedandy"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "http",
+    "frontend"
+  ],
+  "documentation": "https://github.com/donthedandy/ha-ceny-paliv",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/donthedandy/ha-ceny-paliv/issues",
+  "requirements": [],
+  "version": "0.3.0"
+}
