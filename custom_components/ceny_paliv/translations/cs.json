@@ -1,0 +1,78 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Přístupový klíč mBenzin",
+        "description": "Zadejte svůj osobní přístupový klíč k mBenzin.cz. Klíč si můžete zdarma vyžádat e-mailem na reklama@mbenzin.cz – napište, že ceny používáte v Home Assistantu, pro které město či stanice a jak často je budete načítat. Klíč je osobní, nikomu ho nesdílejte. Ceny paliv je nezávislý projekt; ceny pocházejí z mBenzin.cz, které s touto integrací nijak nesouvisí.",
+        "data": {
+          "key": "Přístupový klíč"
+        },
+        "data_description": {
+          "key": "Klíč, který jste dostali e-mailem od mBenzin.cz. Zkopírujte ho celý, bez mezer."
+        }
+      },
+      "city": {
+        "title": "Město",
+        "description": "Vyberte město. Zobrazí se pouze čerpací stanice z tohoto města, nikoli z celého kraje.",
+        "data": {
+          "city": "Město"
+        }
+      },
+      "fuels": {
+        "title": "Paliva a jazyk",
+        "description": "Vyberte jedno nebo více paliv – například Natural 95 a LPG pro vůz na dvě paliva. Pro každé palivo se vytvoří samostatné senzory. Nezapomeňte, že mBenzin nerozlišuje benzín E10, cena Natural 95 platí pro všechny 95oktanové benzíny.",
+        "data": {
+          "fuels": "Paliva",
+          "language": "Jazyk textů v dashboardu"
+        },
+        "data_description": {
+          "language": "Určuje jazyk popisků v hotových pohledech dashboardu (např. „Moje stanice“). Jazyk samotného nastavení se řídí jazykem Home Assistantu."
+        }
+      },
+      "station": {
+        "title": "Oblíbená stanice – {fuel}",
+        "description": "Vaše nejčastější čerpací stanice v městě {city} pro palivo {fuel}. Dostane vlastní senzor s historií cen, trendy a pořadím ve městě. Pokud žádnou nechcete, ponechte „—“.",
+        "data": {
+          "station": "Oblíbená stanice"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "mBenzin klíč nepřijal. Zkontrolujte, že je zkopírovaný celý a bez mezer.",
+      "cannot_connect": "Nepodařilo se spojit s mBenzin.cz. Zkuste to prosím znovu.",
+      "rate_limited": "mBenzin vrátil chybu 429 (limit je 20 stránek za hodinu). Zkuste to za chvíli.",
+      "no_fuel": "Vyberte alespoň jedno palivo."
+    },
+    "abort": {
+      "already_configured": "Toto město je již nastaveno."
+    }
+  },
+  "options": {
+    "step": {
+      "fuels": {
+        "title": "Paliva a jazyk",
+        "description": "Vyberte jedno nebo více paliv – například Natural 95 a LPG pro vůz na dvě paliva. Pro každé palivo se vytvoří samostatné senzory. Nezapomeňte, že mBenzin nerozlišuje benzín E10, cena Natural 95 platí pro všechny 95oktanové benzíny.",
+        "data": {
+          "fuels": "Paliva",
+          "language": "Jazyk textů v dashboardu"
+        },
+        "data_description": {
+          "language": "Určuje jazyk popisků v hotových pohledech dashboardu (např. „Moje stanice“). Jazyk samotného nastavení se řídí jazykem Home Assistantu."
+        }
+      },
+      "station": {
+        "title": "Oblíbená stanice – {fuel}",
+        "description": "Vaše nejčastější čerpací stanice v městě {city} pro palivo {fuel}. Pokud žádnou nechcete, ponechte „—“.",
+        "data": {
+          "station": "Oblíbená stanice"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "mBenzin klíč nepřijal. Zkontrolujte, že je zkopírovaný celý a bez mezer.",
+      "cannot_connect": "Nepodařilo se spojit s mBenzin.cz. Zkuste to prosím znovu.",
+      "rate_limited": "mBenzin vrátil chybu 429 (limit je 20 stránek za hodinu). Zkuste to za chvíli.",
+      "no_fuel": "Vyberte alespoň jedno palivo."
+    }
+  }
+}
