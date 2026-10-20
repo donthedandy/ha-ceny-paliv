@@ -178,6 +178,7 @@ def build_payload(
         return {
             "rank": rank,
             "name": m["name"],
+            "chain": m.get("chain") or m["name"],
             "address": pretty(slug),
             "street": street_of(m["name"], pretty(slug)),
             "price": m["price"],

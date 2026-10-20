@@ -37,6 +37,7 @@ TOP_ATTRIBUTES = (
     "language",
     "labels",
     "next_update",
+    "logos",
 )
 HOME_ATTRIBUTES = ("updated", "updated_date", "age_days", "rank", "fresh_count", "vs_cheapest", "cheapest_name", "trends", "maps")
 

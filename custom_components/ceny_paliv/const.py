@@ -6,7 +6,14 @@ from datetime import timedelta
 DOMAIN = "ceny_paliv"
 
 CARD_URL = "/ceny_paliv_static/ceny-paliv-card.js"
-CARD_VERSION = "0.3.0"
+CARD_VERSION = "0.4.0"
+
+# Optional station logos (pack in the GitHub repository, downloaded on request, see logos.py)
+LOGO_URL = "/ceny_paliv_static/logos"  # served from <config>/ceny_paliv_logos/
+LOGO_DIR_NAME = "ceny_paliv_logos"
+_PACK = "https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/logos"
+LOGO_INDEX_URL = f"{_PACK}/index.json"
+LOGO_RAW_URL = _PACK + "/{id}.png"
 
 CONF_KEY = "key"
 CONF_CITY = "city"
@@ -14,6 +21,7 @@ CONF_FUELS = "fuels"
 CONF_HOMES = "homes"  # {fuel: station slug}
 CONF_LANGUAGE = "language"
 CONF_STATION = "station"
+CONF_LOGOS = "logos"  # logo ids ticked in the setup
 
 NONE_VALUE = "__none__"
 

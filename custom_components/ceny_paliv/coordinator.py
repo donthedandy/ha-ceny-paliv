@@ -11,6 +11,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
+from .logos import logo_dir, scan_logos
 from .api import MBenzinError, async_fetch_markers, build_payload
 from .const import (
     CONF_CITY,
@@ -88,6 +89,10 @@ class CenyPalivCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 now=now,
                 language=self.language,
             )
+
+        logos = await self.hass.async_add_executor_job(scan_logos, logo_dir(self.hass))
+        for payload in result.values():
+            payload["logos"] = logos
 
         if not result:
             raise UpdateFailed("Ceny paliv refresh failed (mBenzin.cz): " + ", ".join(errors))

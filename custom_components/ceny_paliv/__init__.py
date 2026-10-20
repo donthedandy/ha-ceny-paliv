@@ -10,8 +10,9 @@ from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
-from .const import CARD_URL, CARD_VERSION
+from .const import CARD_URL, CARD_VERSION, LOGO_URL
 from .coordinator import CenyPalivConfigEntry, CenyPalivCoordinator
+from .logos import ID_RE, logo_dir
 
 PLATFORMS = ["sensor"]
 
@@ -31,10 +32,28 @@ class CenyPalivCardView(HomeAssistantView):
         return web.FileResponse(self._path, headers={"Cache-Control": "no-cache"})
 
 
+class CenyPalivLogoView(HomeAssistantView):
+    """Serves the downloaded chain logos (<config>/ceny_paliv_logos/<id>.png). No auth: the browser loads them in <img>."""
+
+    url = LOGO_URL + "/{logo_id}.png"
+    name = "ceny_paliv:logo"
+    requires_auth = False
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self._hass = hass
+
+    async def get(self, request: web.Request, logo_id: str) -> web.StreamResponse:
+        path = logo_dir(self._hass) / f"{logo_id}.png"
+        if not ID_RE.match(logo_id) or not await self._hass.async_add_executor_job(path.is_file):
+            return web.Response(status=404)
+        return web.FileResponse(path, headers={"Cache-Control": "no-cache"})
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Serve the dashboard card (custom:ceny-paliv-card) and load it in the frontend."""
     card = Path(__file__).parent / "frontend" / "ceny-paliv-card.js"
     hass.http.register_view(CenyPalivCardView(card))
+    hass.http.register_view(CenyPalivLogoView(hass))
     add_extra_js_url(hass, f"{CARD_URL}?v={CARD_VERSION}")
     return True
 
