@@ -1,0 +1,118 @@
+{
+ "logos": [
+  {
+   "id": "armex",
+   "label": "Armex Oil",
+   "match": [
+    "armex oil",
+    "armex"
+   ]
+  },
+  {
+   "id": "avia",
+   "label": "AVIA",
+   "match": [
+    "avia"
+   ]
+  },
+  {
+   "id": "eurooil",
+   "label": "EuroOil",
+   "match": [
+    "eurooil",
+    "euro oil"
+   ]
+  },
+  {
+   "id": "exxon",
+   "label": "Exxon",
+   "match": [
+    "exxon"
+   ]
+  },
+  {
+   "id": "globus",
+   "label": "Globus",
+   "match": [
+    "globus"
+   ]
+  },
+  {
+   "id": "gulf",
+   "label": "Gulf",
+   "match": [
+    "gulf"
+   ]
+  },
+  {
+   "id": "makro",
+   "label": "Makro",
+   "match": [
+    "makro"
+   ]
+  },
+  {
+   "id": "mol",
+   "label": "MOL",
+   "match": [
+    "mol"
+   ]
+  },
+  {
+   "id": "omv",
+   "label": "OMV",
+   "match": [
+    "omv"
+   ]
+  },
+  {
+   "id": "orlen",
+   "label": "Orlen",
+   "match": [
+    "orlen"
+   ]
+  },
+  {
+   "id": "shell",
+   "label": "Shell",
+   "match": [
+    "shell"
+   ]
+  },
+  {
+   "id": "silmet",
+   "label": "Silmet",
+   "match": [
+    "silmet"
+   ]
+  },
+  {
+   "id": "tankono",
+   "label": "Tank ONO",
+   "match": [
+    "tank ono"
+   ]
+  },
+  {
+   "id": "tesco",
+   "label": "Tesco",
+   "match": [
+    "tesco"
+   ]
+  },
+  {
+   "id": "texaco",
+   "label": "Texaco",
+   "match": [
+    "texaco"
+   ]
+  },
+  {
+   "id": "tomegas",
+   "label": "Tomegas",
+   "match": [
+    "tomegas"
+   ]
+  }
+ ]
+}
