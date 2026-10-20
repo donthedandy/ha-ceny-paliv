@@ -14,12 +14,11 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import pretty, station_title
-from .const import CONF_CITY, DOMAIN, FUELS, TOP
+from .api import station_title
+from .const import FUELS, TOP
 from .coordinator import CenyPalivConfigEntry, CenyPalivCoordinator
 
 TOP_ATTRIBUTES = (
@@ -65,12 +64,8 @@ class CenyPalivEntity(CoordinatorEntity[CenyPalivCoordinator], SensorEntity):
         self._attr_name = f"Ceny paliv {fuel} {suffix}"
         self.entity_id = f"sensor.ceny_paliv_{fuel}_{suffix}"  # suggestion for new installs
         self._attr_native_unit_of_measurement = FUELS.get(fuel, (fuel, "Kč/l"))[1]
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name=f"Ceny paliv {pretty(entry.data[CONF_CITY])}",
-            manufacturer="Data: mBenzin.cz",
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        # No device on purpose: with a device, Home Assistant puts the device name in front of every entity name
+        # ("Ceny paliv Hradec Kralove 1 · Orlen – ..."), which hides the station in narrow cards.
 
     @property
     def _payload(self) -> dict[str, Any]:
