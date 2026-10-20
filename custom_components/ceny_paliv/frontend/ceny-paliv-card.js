@@ -5,29 +5,48 @@
  *   type: custom:ceny-paliv-card
  *   fuel: n95            # n95 | benzinplus | diesel | dieselplus | lpg | cng | adblue
  *
- * Optional:
- *   show_map: true        # map with the 5 cheapest stations (+ your favourite one)
- *   show_graph: true      # 30-day graph of your favourite station
- *   logos: [orlen, makro] # chains for which /local/<chain>.png exists (round 128 px PNG in config/www/)
- *   logo_path: /local/
+ * Optional (all of them are also in the visual editor: Add card > Ceny paliv):
+ *   show: [home, list, map, graph]   # which parts to draw; use several cards to place them freely
+ *   layout: auto         # auto = 2 columns when the card is wide | columns | stack
+ *   stations: 5          # 1-5 stations in the list
+ *   compact: false       # dense version: one line per station, short footer
+ *   show_footer: true    # update times, legend (default: false when compact)
+ *   map_height: 300      # px, default: the map card's own height
+ *   logo_path: /local/   # only to use your own PNG files instead of the downloaded logo pack
  *
- * The card also has a visual editor: Add card > Ceny paliv.
+ * Station logos: tick the chains in the integration's setup (Configure > Station logos); the card finds them by
+ * itself. Chains without a logo get a coloured badge with their initials.
  *
  * Texts come from the language chosen in the integration setup (attribute `labels` of the top5 sensor).
  */
-const CARD_VERSION = '0.3.0';
+const CARD_VERSION = '0.4.0';
+
+const PARTS = ['home', 'list', 'map', 'graph'];
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const norm = (s) => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
 const STYLE = `
   :host { display: block; }
-  .stack { display: flex; flex-direction: column; gap: 16px; }
+  .wrap { container-type: inline-size; }
+  .grid, .col { display: flex; flex-direction: column; gap: 16px; }
+  .col { min-width: 0; }
+  .grid.columns { flex-direction: row; align-items: flex-start; }
+  .grid.columns > .col { flex: 1 1 0; }
+  @container (min-width: 640px) {
+    .grid.auto { flex-direction: row; align-items: flex-start; }
+    .grid.auto > .col { flex: 1 1 0; }
+  }
   .card { background: #171a20; border: 1px solid #262a33; border-radius: 22px; padding: 16px; color: #eef0f3;
           font-family: Manrope, system-ui, sans-serif; box-sizing: border-box; }
+  .card.compact { padding: 12px 14px; border-radius: 18px; }
   .card.home { border-color: rgba(76,195,217,0.30); cursor: pointer; }
   .row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #23272f; cursor: pointer; user-select: none; }
+  .compact .row { padding: 7px 0; gap: 10px; }
   .row:first-of-type { border-top: none; }
   .map, .graph { border-radius: 22px; overflow: hidden; }
+  .map.fixed { position: relative; }
+  .map.fixed > * { position: absolute; inset: 0; display: block; }
   ha-icon { display: inline-block; }
 `;
 
@@ -42,7 +61,14 @@ class CenyPalivCard extends HTMLElement {
 
   setConfig(config) {
     if (!config || !config.fuel) throw new Error('ceny-paliv-card: set "fuel", for example "n95"');
-    this._config = Object.assign({ show_map: true, show_graph: true, logos: [], logo_path: '/local/' }, config);
+    const show = (Array.isArray(config.show) ? config.show : config.show ? [config.show] : PARTS).filter((p) => PARTS.includes(p));
+    this._config = Object.assign({ layout: 'auto', stations: 5, compact: false, logo_path: '' }, config);
+    this._show = show.length ? show : PARTS;
+    this._layout = ['auto', 'columns', 'stack'].includes(this._config.layout) ? this._config.layout : 'auto';
+    this._n = Math.min(5, Math.max(1, Math.round(Number(this._config.stations) || 5)));
+    this._compact = !!this._config.compact;
+    this._footer = this._config.show_footer != null ? !!this._config.show_footer : !this._compact;
+    this._mapHeight = Number(this._config.map_height) > 0 ? Number(this._config.map_height) : 0;
     this._ids = null;
     this._scanAt = 0;
     this._sig = '';
@@ -94,8 +120,26 @@ class CenyPalivCard extends HTMLElement {
     return ids;
   }
 
-  getCardSize() { return 12; }
-  getGridOptions() { return { columns: 12, min_columns: 6 }; }
+  _sides() {
+    const a = this._show.some((p) => p === 'home' || p === 'list');
+    const b = this._show.some((p) => p === 'map' || p === 'graph');
+    return { a, b, wide: a && b && this._layout !== 'stack' };
+  }
+
+  getCardSize() {
+    const h = { home: this._compact ? 2 : 4, list: this._compact ? 1 + this._n : 2 + 2 * this._n, map: this._mapHeight ? Math.ceil(this._mapHeight / 50) : 6, graph: 4 };
+    const sizes = this._show.map((p) => h[p]);
+    const sd = this._sides();
+    if (!sd.wide) return sizes.reduce((x, y) => x + y, 0);
+    const left = ['home', 'list'].filter((p) => this._show.includes(p)).reduce((x, p) => x + h[p], 0);
+    const right = ['map', 'graph'].filter((p) => this._show.includes(p)).reduce((x, p) => x + h[p], 0);
+    return Math.max(left, right);
+  }
+
+  getGridOptions() {
+    const wide = this._config ? this._sides().wide : true;
+    return { columns: wide ? 12 : 6, min_columns: wide ? 8 : 3, rows: 'auto' };
+  }
   static getConfigElement() { return document.createElement('ceny-paliv-card-editor'); }
   static fuels(hass) {
     const out = [];
@@ -115,7 +159,11 @@ class CenyPalivCard extends HTMLElement {
   // ---------------------------------------------------------------- skeleton
   _build() {
     const root = this.shadowRoot;
-    root.innerHTML = `<style>${STYLE}</style><div class="stack"><div id="texts"></div><div id="extra" class="stack"></div></div>`;
+    const sd = this._sides();
+    const col = (id, ids) => (ids.some((p) => this._show.includes(p))
+      ? `<div class="col" id="${id}">${ids.filter((p) => this._show.includes(p)).map((p) => `<div id="${p}"></div>`).join('')}</div>` : '');
+    const mode = sd.wide ? this._layout : 'stack';
+    root.innerHTML = `<style>${STYLE}</style><div class="wrap"><div class="grid ${mode}">${col('colA', ['home', 'list'])}${col('colB', ['map', 'graph'])}</div></div>`;
     root.addEventListener('click', (e) => this._click(e));
     root.addEventListener('pointerdown', (e) => this._down(e));
     ['pointerup', 'pointerleave', 'pointercancel'].forEach((n) => root.addEventListener(n, () => clearTimeout(this._timer)));
@@ -125,19 +173,18 @@ class CenyPalivCard extends HTMLElement {
   async _buildExtra() {
     if (this._extraReady || !this._hass) return;
     this._extraReady = true;
-    const c = this._config;
-    const extra = this.shadowRoot.getElementById('extra');
     const helpers = window.loadCardHelpers ? await window.loadCardHelpers() : null;
     if (!helpers) return;
     const hasHome = !!this._hass.states[this._ids.home];
     const kids = [];
-    if (c.show_map) {
-      const entities = this._ids.pos.filter(Boolean).map((id) => ({ entity: id, label_mode: 'state', focus: true }));
+    if (this._show.includes('map')) {
+      const entities = this._ids.pos.slice(0, this._n).filter(Boolean).map((id) => ({ entity: id, label_mode: 'state', focus: true }));
       if (hasHome) entities.push({ entity: this._ids.home, label_mode: 'state', focus: true });
-      kids.push({ cls: 'map', config: { type: 'map', theme_mode: 'dark', auto_fit: true, default_zoom: 12, hours_to_show: 0, entities } });
+      kids.push({ id: 'map', cls: this._mapHeight ? 'map fixed' : 'map', config: { type: 'map', theme_mode: 'dark', auto_fit: true, default_zoom: 12, hours_to_show: 0, entities } });
     }
-    if (c.show_graph && hasHome) {
+    if (this._show.includes('graph') && hasHome) {
       kids.push({
+        id: 'graph',
         cls: 'graph',
         config: {
           type: 'statistics-graph', title: '30 d', entities: [this._ids.home], days_to_show: 30, period: 'day',
@@ -151,8 +198,9 @@ class CenyPalivCard extends HTMLElement {
       el.hass = this._hass;
       const wrap = document.createElement('div');
       wrap.className = k.cls;
+      if (k.id === 'map' && this._mapHeight) wrap.style.height = `${this._mapHeight}px`;
       wrap.appendChild(el);
-      extra.appendChild(wrap);
+      this.shadowRoot.getElementById(k.id).appendChild(wrap);
       this._children.push(el);
     }
   }
@@ -180,28 +228,60 @@ class CenyPalivCard extends HTMLElement {
     return Math.round((today - new Date(s.updated_date + 'T00:00:00')) / 86400000);
   }
 
-  _avatar(s, rank, best) {
-    const T = (k) => this._T(k);
-    const name = s.name || '—';
-    const chain = name.toLowerCase().split(' ')[0];
-    const badge = best ? 'background:rgba(95,211,154,0.16);color:#5fd39a' : 'background:#23272f;color:#9aa1ad';
-    if (!(this._config.logos || []).map((x) => String(x).toLowerCase()).includes(chain)) {
-      return `<span style="width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;${badge}">${rank}</span>`;
+  // URL of the logo of a station's chain, or '' when there is none. Logos come from the downloaded pack (list in the
+  // `logos` attribute of the top5 sensor, matched on the chain name) or, with `logo_path`, from your own PNG files.
+  _logoUrl(s) {
+    const key = norm(s.chain || s.name);
+    if (!key) return '';
+    const path = this._config.logo_path;
+    if (path) return `${path}${key.replace(/ /g, '-')}.png`;
+    const top = this._hass.states[this._ids.top5];
+    const list = (top && top.attributes && top.attributes.logos) || [];
+    let best = null; let len = 0;
+    for (const l of list) {
+      for (const m of l.match || []) {
+        if ((key === m || key.startsWith(m + ' ')) && m.length > len) { best = l.id; len = m.length; }
+      }
     }
-    const plain = `position:absolute;left:0;top:0;width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;${badge}`;
-    return `<span style="position:relative;width:32px;height:32px;flex-shrink:0;display:block"><span style="${plain}">${rank}</span><img src="${esc(this._config.logo_path)}${esc(chain)}.png?v=1" alt="${esc(name)}" onload="this.previousElementSibling.style.display='none';this.nextElementSibling.style.display='flex'" onerror="this.style.display='none'" style="position:absolute;left:0;top:0;width:32px;height:32px;border-radius:999px;display:block;${best ? 'box-shadow:0 0 0 2px #5fd39a' : ''}"><span style="display:none;position:absolute;right:-5px;bottom:-5px;min-width:17px;height:17px;padding:0 3px;box-sizing:border-box;border-radius:999px;background:#0e1014;border:1px solid ${best ? '#5fd39a' : '#2a2f39'};color:${best ? '#5fd39a' : '#d6dae1'};font-size:10px;font-weight:800;align-items:center;justify-content:center">${rank}</span></span>`;
+    return best ? `/ceny_paliv_static/logos/${encodeURIComponent(best)}.png` : '';
+  }
+
+  _initials(name) {
+    const w = String(name || '?').trim();
+    return (w.length <= 3 ? w : w.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 2)).toUpperCase();
+  }
+
+  // Round badge: the chain's logo when there is one, else its initials on a colour taken from the name.
+  _disc(s, size, extra) {
+    const name = s.chain || s.name || '?';
+    let h = 0; for (const ch of norm(name)) h = (h * 31 + ch.charCodeAt(0)) % 360;
+    const url = this._logoUrl(s);
+    const base = `width:${size}px;height:${size}px;border-radius:999px;position:absolute;left:0;top:0;${extra || ''}`;
+    const init = `<span style="${base}display:flex;align-items:center;justify-content:center;box-sizing:border-box;font-size:${Math.round(size * 0.36)}px;font-weight:800;letter-spacing:-0.02em;background:hsl(${h} 34% 26%);color:hsl(${h} 70% 86%)">${esc(this._initials(name))}</span>`;
+    if (!url) return init;
+    return init + `<img src="${esc(url)}" alt="${esc(name)}" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'" style="${base}display:block;object-fit:cover;background:#fff">`;
+  }
+
+  _avatar(s, rank, best) {
+    const size = this._compact ? 26 : 32;
+    const ring = best ? 'box-shadow:0 0 0 2px #5fd39a;' : '';
+    return `<span style="position:relative;width:${size}px;height:${size}px;flex-shrink:0;display:block">${this._disc(s, size, ring)}<span style="position:absolute;right:-5px;bottom:-5px;min-width:16px;height:16px;padding:0 3px;box-sizing:border-box;border-radius:999px;background:#0e1014;border:1px solid ${best ? '#5fd39a' : '#2a2f39'};color:${best ? '#5fd39a' : '#d6dae1'};font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">${rank}</span></span>`;
   }
 
   // ---------------------------------------------------------------- rendering
   _renderTexts() {
     const hass = this._hass;
     const top = hass.states[this._ids.top5];
-    const host = this.shadowRoot.getElementById('texts');
+    const root = this.shadowRoot;
+    const slot = (p, html) => { const el = root.getElementById(p); if (el) el.innerHTML = html; };
     if (!top || top.state === 'unavailable') {
-      host.innerHTML = `<div class="card" style="color:#9aa1ad;font-size:14px">Ceny paliv (${esc(this._config.fuel)}): sensor not found or unavailable — is the fuel set up in the integration?</div>`;
+      const msg = `<div class="card" style="color:#9aa1ad;font-size:14px">Ceny paliv (${esc(this._config.fuel)}): sensor not found or unavailable — is the fuel set up in the integration?</div>`;
+      const first = this._show.find((p) => p === 'home' || p === 'list') || this._show[0];
+      this._show.forEach((p) => slot(p, p === first ? msg : ''));
       return;
     }
-    host.innerHTML = `<div class="stack">${this._homeHtml()}${this._listHtml()}</div>`;
+    slot('home', this._show.includes('home') ? this._homeHtml() : '');
+    slot('list', this._show.includes('list') ? this._listHtml() : '');
     this._buildExtra();
   }
 
@@ -239,27 +319,29 @@ class CenyPalivCard extends HTMLElement {
     if (a.rank == null) pos = `<span style="color:#f5c26b">${esc(T('not_ranked'))}</span>`;
     else if (Number(a.vs_cheapest) <= 0) pos = `<span style="color:#5fd39a">${esc(T('cheapest_town', { rank: a.rank, n: a.fresh_count }))}</span>`;
     else pos = `<span style="color:#f5c26b">${esc(T('vs_cheapest', { d: Number(a.vs_cheapest).toFixed(2), name: a.cheapest_name, rank: a.rank, n: a.fresh_count }))}</span>`;
-    const chain0 = stationName.split(' ')[0].toLowerCase();
-    const iconBox = `<div style="position:absolute;left:0;top:0;width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(76,195,217,0.16)"><ha-icon icon="mdi:gas-station-in-use" style="--mdc-icon-size:22px;color:#4cc3d9"></ha-icon></div>`;
-    const logoImg = (this._config.logos || []).map((x) => String(x).toLowerCase()).includes(chain0)
-      ? `<img src="${esc(this._config.logo_path)}${esc(chain0)}.png?v=1" onload="this.previousElementSibling.style.display='none'" onerror="this.style.display='none'" style="position:absolute;left:0;top:0;width:44px;height:44px;border-radius:999px;display:block">`
-      : '';
-    const logo = `<div style="position:relative;width:44px;height:44px;flex-shrink:0">${iconBox}${logoImg}</div>`;
-    return `<div class="card home" data-more-info="${esc(this._ids.home)}">
-      <div style="display:flex;flex-direction:column;gap:12px;width:100%;text-align:left">
+    const topHome = (this._hass.states[this._ids.top5].attributes || {}).home || { name: stationName };
+    const hasLogo = !!this._logoUrl(topHome);
+    const size = this._compact ? 36 : 44;
+    const iconBox = `<div style="position:absolute;left:0;top:0;width:${size}px;height:${size}px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(76,195,217,0.16)"><ha-icon icon="mdi:gas-station-in-use" style="--mdc-icon-size:22px;color:#4cc3d9"></ha-icon></div>`;
+    const logo = `<div style="position:relative;width:${size}px;height:${size}px;flex-shrink:0">${hasLogo ? this._disc(topHome, size) : iconBox}</div>`;
+    const cp = this._compact;
+    const mini = [1, 7, 30].map((n) => { const r = this._arrow(tr[String(n)]); return `<span style="color:#9aa1ad">${n} d <span style="color:${r.color};font-weight:800">${esc(r.txt)}</span></span>`; }).join(' · ');
+    return `<div class="card home${cp ? ' compact' : ''}" data-more-info="${esc(this._ids.home)}">
+      <div style="display:flex;flex-direction:column;gap:${cp ? 8 : 12}px;width:100%;text-align:left">
         <div style="display:flex;align-items:center;gap:12px">${logo}
           <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;min-width:0">
             <span style="font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:#9aa1ad">${esc(T('my_station'))}</span>
             <span style="font-size:15px;font-weight:700;color:#eef0f3">${esc(stationName)}</span>
             <span style="font-size:12px;color:${stale ? '#f5c26b' : '#9aa1ad'}">${esc(updTxt)}</span></div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">
-            <span style="font-size:40px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:${stale ? '#9aa1ad' : '#eef0f3'}">${price}</span>
+            <span style="font-size:${cp ? 30 : 40}px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:${stale ? '#9aa1ad' : '#eef0f3'}">${price}</span>
             <span style="font-size:11px;color:#9aa1ad;font-weight:600">${esc(a.unit_of_measurement || 'Kč/l')}</span></div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px">${chips}</div>
-        ${note ? `<span style="font-size:11px;color:#5b6270;margin-top:-4px">${esc(note)}</span>` : ''}
+        ${cp ? `<div style="display:flex;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-weight:600">${mini}</div>`
+    : `<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px">${chips}</div>
+        ${note ? `<span style="font-size:11px;color:#5b6270;margin-top:-4px">${esc(note)}</span>` : ''}`}
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;font-weight:600">${pos}
-          <span style="color:#5b6270;font-weight:500;white-space:nowrap">${esc(T('tap_history'))}</span></div>
+          ${cp ? '' : `<span style="color:#5b6270;font-weight:500;white-space:nowrap">${esc(T('tap_history'))}</span>`}</div>
       </div></div>`;
   }
 
@@ -271,21 +353,23 @@ class CenyPalivCard extends HTMLElement {
     const all = Array.isArray(at.stations) ? at.stations : [];
     const maxAge = at.max_age_days != null ? Number(at.max_age_days) : 1;
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    const list = all.filter((s) => this._age(s, today) <= maxAge);
+    const fresh = all.filter((s) => this._age(s, today) <= maxAge);
+    const list = fresh.slice(0, this._n);
+    const cp = this._compact;
     const prices = list.map((s) => Number(s.price)).filter((p) => !isNaN(p));
     const min = prices.length ? Math.min(...prices) : null;
     const unit = at.unit_of_measurement || 'Kč/l';
     const fp = (p) => Number(p).toFixed(2);
-    const n = min === null ? 0 : list.filter((s) => Number(s.price) === min).length;
+    const n = min === null ? 0 : fresh.filter((s) => Number(s.price) === min).length;
     const sub = min === null ? T('no_recent') : T('cheapest_price', { p: fp(min), unit }) + (n > 1 ? ' · ' + T('stations_same', { n }) : '');
-    const head = `<div style="display:flex;align-items:center;gap:12px;width:100%;padding-bottom:12px">
-      <div style="width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(245,177,76,0.16);flex-shrink:0">
+    const head = `<div style="display:flex;align-items:center;gap:12px;width:100%;padding-bottom:${cp ? 6 : 12}px">
+      <div style="width:${cp ? 36 : 44}px;height:${cp ? 36 : 44}px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(245,177,76,0.16);flex-shrink:0">
         <ha-icon icon="mdi:gas-station" style="--mdc-icon-size:22px;color:#f5b14c"></ha-icon></div>
       <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
         <span style="font-size:15px;font-weight:700;color:#eef0f3">${esc(at.fuel_label || this._config.fuel)} · ${esc(at.city_name || '')}</span>
         <span style="font-size:13px;color:#9aa1ad">${esc(sub)}</span></div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">
-        <span style="font-size:28px;font-weight:800;letter-spacing:-0.02em;line-height:1;color:${min === null ? '#5b6270' : '#5fd39a'}">${min === null ? '—' : fp(min)}</span>
+        <span style="font-size:${cp ? 22 : 28}px;font-weight:800;letter-spacing:-0.02em;line-height:1;color:${min === null ? '#5b6270' : '#5fd39a'}">${min === null ? '—' : fp(min)}</span>
         <span style="font-size:11px;color:#9aa1ad;font-weight:600">${esc(unit)}</span></div></div>`;
     const rows = list.map((s, i) => {
       const best = Number(s.price) === min;
@@ -300,8 +384,8 @@ class CenyPalivCard extends HTMLElement {
       return `<div class="row" data-maps="${esc(s.maps)}">
         ${this._avatar(s, i + 1, best)}
         <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
-          <span style="font-size:15px;font-weight:700;color:#eef0f3">${esc(name)}${home}</span>
-          <span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(addr)} · ${when}</span></div>
+          <span style="font-size:15px;font-weight:700;color:#eef0f3;${cp ? 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis' : ''}">${esc(name)}${cp ? ` <span style="font-size:11px;font-weight:500;color:#9aa1ad">${esc(addr)}</span>` : ''}${home}</span>
+          ${cp ? '' : `<span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(addr)} · ${when}</span>`}</div>
         <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px" title="${esc(T('vs_yesterday'))}">
           <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
           <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
@@ -317,14 +401,14 @@ class CenyPalivCard extends HTMLElement {
     const fa = at.fetched_at ? new Date(at.fetched_at) : null;
     const la = at.last_attempt ? new Date(at.last_attempt) : null;
     const nu = at.next_update ? new Date(at.next_update) : null;
-    const hidden = (at.excluded || 0) + (all.length - list.length);
+    const hidden = (at.excluded || 0) + (all.length - fresh.length);
     const lines = [`<span style="font-size:13px;color:#d6dae1;font-weight:600">${esc(T('table_updated', { t: fa ? when(fa) : '—', n: nu ? when(nu) : '—' }))}</span>`];
     if (at.fetch_error) lines.push(`<span style="font-size:12px;color:#f5c26b">${esc(T('refresh_failed', { at: la ? T('at') + when(la) : '', err: at.fetch_error }))}</span>`);
     if (at.city_total) lines.push(`<span style="font-size:12px;color:#9aa1ad">${esc(T('hidden', { h: hidden, t: at.city_total, age: maxAge >= 1 ? T('yesterday_l') : T('today_l') }))}</span>`);
     lines.push(`<span style="font-size:11px;color:#9aa1ad">${esc(T('arrows'))} · <span style="color:#5fd39a">▼ ${esc(T('down'))}</span> · <span style="color:#f5c26b">— ${esc(T('stable'))}</span> · <span style="color:#ff7a6b">▲ ${esc(T('up'))}</span> · ${esc(T('longpress'))}</span>`);
     lines.push(`<span style="font-size:11px;color:#5b6270">mBenzin.cz · ${esc(at.fuel_label || '')}${at.fuel === 'n95' ? ' ' + esc(T('e10_note')) : ''} · ${esc(T('tap_station'))}</span>`);
-    const foot = `<div style="display:flex;flex-direction:column;gap:3px;text-align:left;border-top:1px solid #23272f;padding-top:12px">${lines.join('')}</div>`;
-    return `<div class="card" data-more-info="${esc(this._ids.home || this._ids.top5)}">${head}${rows}${foot}</div>`;
+    const foot = !this._footer ? `<div style="padding-top:6px;font-size:11px;color:#5b6270;text-align:left">mBenzin.cz${at.fetch_error ? ' · ' + esc(T('refresh_failed', { at: '', err: at.fetch_error })) : ''}</div>` : `<div style="display:flex;flex-direction:column;gap:3px;text-align:left;border-top:1px solid #23272f;padding-top:12px">${lines.join('')}</div>`;
+    return `<div class="card${cp ? ' compact' : ''}" data-more-info="${esc(this._ids.home || this._ids.top5)}">${head}${rows}${foot}</div>`;
   }
 
   // ---------------------------------------------------------------- interaction
@@ -361,8 +445,18 @@ class CenyPalivCard extends HTMLElement {
 
 // ------------------------------------------------------------------ visual editor
 const EDITOR_TEXT = {
-  en: { fuel: 'Fuel', show_map: 'Show the map', show_graph: 'Show the 30-day graph of my favourite station' },
-  cs: { fuel: 'Palivo', show_map: 'Zobrazit mapu', show_graph: 'Zobrazit graf za 30 dní oblíbené stanice' },
+  en: {
+    fuel: 'Fuel', show: 'Parts to show', layout: 'Layout', stations: 'Stations in the list', compact: 'Compact', show_footer: 'Show update times and legend',
+    map_height: 'Map height in px (0 = automatic)', logo_path: 'Folder of your own logos (leave empty for the logo pack)',
+    home: 'My station', list: 'Cheapest stations', map: 'Map', graph: '30-day graph',
+    auto: 'Automatic: 2 columns when the card is wide', columns: 'Always 2 columns', stack: 'Always 1 column',
+  },
+  cs: {
+    fuel: 'Palivo', show: 'Zobrazené části', layout: 'Rozvržení', stations: 'Počet stanic v seznamu', compact: 'Kompaktní', show_footer: 'Zobrazit časy aktualizace a legendu',
+    map_height: 'Výška mapy v px (0 = automaticky)', logo_path: 'Složka s vlastními logy (prázdné = balíček log)',
+    home: 'Moje stanice', list: 'Nejlevnější stanice', map: 'Mapa', graph: 'Graf za 30 dní',
+    auto: 'Automaticky: 2 sloupce, je-li karta široká', columns: 'Vždy 2 sloupce', stack: 'Vždy 1 sloupec',
+  },
 };
 
 class CenyPalivCardEditor extends HTMLElement {
@@ -374,20 +468,31 @@ class CenyPalivCardEditor extends HTMLElement {
     if (!this._form) {
       this._form = document.createElement('ha-form');
       this._form.addEventListener('value-changed', (e) => {
-        this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: Object.assign({}, this._config, e.detail.value) }, bubbles: true, composed: true }));
+        const config = Object.assign({}, this._config, e.detail.value);
+        for (const k of Object.keys(config)) {
+          const v = config[k];
+          if (v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length) || (k === 'map_height' && !v)) delete config[k];
+        }
+        this.dispatchEvent(new CustomEvent('config-changed', { detail: { config }, bubbles: true, composed: true }));
       });
       this.appendChild(this._form);
     }
     const lang = ((this._hass.language || 'en').split('-')[0] in EDITOR_TEXT) ? this._hass.language.split('-')[0] : 'en';
+    const L = EDITOR_TEXT[lang];
     const options = CenyPalivCard.fuels(this._hass);
     this._form.hass = this._hass;
-    this._form.data = Object.assign({ show_map: true, show_graph: true }, this._config);
+    this._form.data = Object.assign({ show: PARTS, layout: 'auto', stations: 5, compact: false, show_footer: !this._config.compact, map_height: 0 }, this._config);
     this._form.schema = [
       { name: 'fuel', required: true, selector: { select: { options, mode: 'dropdown' } } },
-      { name: 'show_map', selector: { boolean: {} } },
-      { name: 'show_graph', selector: { boolean: {} } },
+      { name: 'show', selector: { select: { multiple: true, mode: 'list', options: PARTS.map((p) => ({ value: p, label: L[p] })) } } },
+      { name: 'layout', selector: { select: { mode: 'dropdown', options: ['auto', 'columns', 'stack'].map((p) => ({ value: p, label: L[p] })) } } },
+      { name: 'stations', selector: { number: { min: 1, max: 5, step: 1, mode: 'slider' } } },
+      { name: 'compact', selector: { boolean: {} } },
+      { name: 'show_footer', selector: { boolean: {} } },
+      { name: 'map_height', selector: { number: { min: 0, max: 800, step: 10, mode: 'box', unit_of_measurement: 'px' } } },
+      { name: 'logo_path', selector: { text: {} } },
     ];
-    this._form.computeLabel = (schema) => EDITOR_TEXT[lang][schema.name] || schema.name;
+    this._form.computeLabel = (schema) => L[schema.name] || schema.name;
   }
 }
 if (!customElements.get('ceny-paliv-card-editor')) customElements.define('ceny-paliv-card-editor', CenyPalivCardEditor);
