@@ -6,7 +6,7 @@ from datetime import timedelta
 DOMAIN = "ceny_paliv"
 
 CARD_URL = "/ceny_paliv_static/ceny-paliv-card.js"
-CARD_VERSION = "0.4.0"
+CARD_VERSION = "0.4.1"
 
 # Optional station logos (pack in the GitHub repository, downloaded on request, see logos.py)
 LOGO_URL = "/ceny_paliv_static/logos"  # served from <config>/ceny_paliv_logos/
