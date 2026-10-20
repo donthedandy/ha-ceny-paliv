@@ -1,0 +1,28 @@
+# Optional: phone notification whenever the price at your usual station changes (any amount).
+# Paste into automations.yaml (or a package). Replace:
+#   - sensor.mbenzin_n95_home          -> the "home" sensor of the fuel you follow (n95, diesel, lpg, cng)
+#   - notify.mobile_app_YOUR_PHONE     -> your own notify service
+#   - /lovelace/fuel_n95               -> the path of your fuel view (the "path:" line of the dashboard file)
+automation:
+  - id: mbenzin_price_alert_n95
+    alias: Fuel — home station price change alert
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id: sensor.mbenzin_n95_home
+        not_from: ["unavailable", "unknown"]
+        not_to: ["unavailable", "unknown"]
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.to_state.state | float(0) != trigger.from_state.state | float(0) }}"
+    actions:
+      - variables:
+          old: "{{ trigger.from_state.state | float }}"
+          new: "{{ trigger.to_state.state | float }}"
+      - action: notify.mobile_app_YOUR_PHONE
+        data:
+          title: "⛽ Fuel price {{ 'down' if new < old else 'up' }}"
+          message: "{{ '%.2f' | format(new) }} — {{ '▼ −' if new < old else '▲ +' }}{{ '%.2f' | format((new - old) | abs) }} (was {{ '%.2f' | format(old) }})"
+          data:
+            url: /lovelace/fuel_n95
+            clickAction: /lovelace/fuel_n95
