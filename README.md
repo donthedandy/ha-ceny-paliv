@@ -13,7 +13,7 @@ A HACS integration that shows the cheapest stations of **your city** for the fue
 - Pick your **city**, one or **several fuels** (e.g. Natural 95 + LPG for a dual-fuel car) and a **favourite station per fuel**
 - Per fuel: the **top 5 cheapest** stations in the city (only that city, not the region), with a Google Maps link, and a **map**
 - Favourite station: price, **trends vs 1/2/7/14/30 days ago**, rank in town, long-term statistics (the 30-day graph)
-- Ready-made **dashboard views** (one per fuel), optional, in **English or Czech** (your choice during setup)
+- A ready-made **dashboard card** (`mbenzin-card`) shipped with the integration — add it from the card picker, no YAML to copy — in **English or Czech** (your choice during setup)
 - Stale prices are hidden (older than yesterday for petrol/diesel, 3 days for CNG, 7 days for LPG/AdBlue)
 
 ## 1. Get your access key (free)
@@ -36,7 +36,7 @@ mBenzin blocks plain scraping with a browser check, but they give a **personal a
 
 You can change the fuels, the language and the favourite stations later: the integration's **Configure** button.
 
-> The setup screens follow Home Assistant's own language (English and Czech are provided). The language chosen in step 3 only sets the labels of the ready-made dashboard views.
+> The setup screens follow Home Assistant's own language (English and Czech are provided). The language chosen in step 3 only sets the labels of the dashboard card.
 
 ## Entities
 
@@ -50,12 +50,31 @@ For each fuel `<fuel>` (`n95`, `benzinplus`, `diesel`, `dieselplus`, `lpg`, `cng
 
 Prices refresh every 6 hours. If a refresh fails (for example HTTP 429) the last data is kept and the attribute `fetch_error` says why.
 
-## 3. Dashboard (optional)
+## 3. The dashboard card (included, nothing else to install)
 
-1. Install [`button-card`](https://github.com/custom-cards/button-card) from HACS.
-2. Dashboard → Edit → add a view → ⋮ → *Edit in YAML* → paste `dashboard/fuel_view_<fuel>.yaml` (n95, diesel, lpg, cng) → Save. One view per fuel.
-3. Round chain logos are shown if you put `orlen.png`, `makro.png`, … (128 px) in `config/www/`. They are trademarks, so none are included; missing ones are just hidden. Adjust the `LOGOS` map in the view for your chains.
-4. No favourite station for that fuel? Remove the first card (and the `…_home` line in the map card) from the view.
+The integration ships its own card, **`mbenzin-card`**. After installing (and restarting) just:
+
+1. Open a dashboard → **Edit** → **Add card** → search **mBenzin**.
+2. Pick the **fuel** (the visual editor lists the fuels you set up). Done.
+
+Or in YAML:
+
+```yaml
+type: custom:mbenzin-card
+fuel: n95            # n95 | benzinplus | diesel | dieselplus | lpg | cng | adblue
+```
+
+One card per fuel: for a dual-fuel car add a second card with `fuel: lpg`. The card shows your favourite station (price, trends, rank), the top 5 with a Google Maps link on tap, a map and the 30-day graph.
+
+| Option | Default | |
+|---|---|---|
+| `fuel` | – | required |
+| `show_map` | `true` | map with the 5 cheapest stations and your favourite one |
+| `show_graph` | `true` | 30-day graph of your favourite station |
+| `logos` | `[]` | chains that have a logo, e.g. `[orlen, makro, tesco]` |
+| `logo_path` | `/local/` | where the logos are |
+
+Texts follow the language chosen in the setup. Logos are optional: put round 128 px PNGs named after the chain (`orlen.png`, …) in `config/www/` and list the chains in `logos`; they are trademarks, so none are included. If the card does not show up after an update, reload the browser page (Ctrl+F5).
 
 For a notification when your station's price changes, see `examples/price_alert.yaml`.
 

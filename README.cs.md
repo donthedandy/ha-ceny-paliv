@@ -13,7 +13,7 @@ Integrace pro HACS, která v Home Assistantu ukazuje ceny paliv z [mBenzin.cz](h
 - Vyberete si **město**, **jedno či více paliv** (třeba Natural 95 a LPG pro vůz na dvě paliva) a pro každé palivo **oblíbenou stanici**.
 - Pro každé palivo **5 nejlevnějších stanic ve městě** (jen z vašeho města, nikoli z celého kraje), odkaz na Google Maps a **mapu s cenami**.
 - U oblíbené stanice: aktuální cena, **trendy oproti 1, 2, 7, 14 a 30 dnům**, pořadí ve městě a dlouhodobá statistika (graf za 30 dní).
-- Hotové **pohledy na dashboard** (jeden pro každé palivo) s volbou jazyka **čeština / angličtina**.
+- Hotová **karta pro dashboard** (`mbenzin-card`) přímo v integraci – přidáte ji z nabídky karet, bez kopírování YAML – s volbou jazyka **čeština / angličtina**.
 - Zastaralé ceny se skrývají: u benzínu a nafty cena starší než včerejšek, u CNG starší než 3 dny, u LPG a AdBlue starší než 7 dní.
 
 ## 1. Získání přístupového klíče (zdarma)
@@ -42,7 +42,7 @@ Co je dobré vědět:
 
 Paliva, jazyk i oblíbené stanice můžete později změnit tlačítkem **Konfigurovat** u integrace.
 
-> Texty samotného nastavení se řídí jazykem Home Assistantu (čeština i angličtina jsou k dispozici). Volba jazyka v kroku „Paliva a jazyk“ určuje jen popisky v hotových pohledech dashboardu.
+> Texty samotného nastavení se řídí jazykem Home Assistantu (čeština i angličtina jsou k dispozici). Volba jazyka v kroku „Paliva a jazyk“ určuje jen popisky v kartě pro dashboard.
 
 ## Senzory
 
@@ -56,12 +56,31 @@ Pro každé palivo `<palivo>` (`n95`, `benzinplus`, `diesel`, `dieselplus`, `lpg
 
 Ceny se obnovují každých 6 hodin. Pokud se aktualizace nepovede (třeba kvůli chybě 429), zůstanou zachována poslední data a atribut `fetch_error` uvede důvod.
 
-## 3. Dashboard (volitelné)
+## 3. Karta pro dashboard (je součástí, nic dalšího se neinstaluje)
 
-1. Z HACS nainstalujte [`button-card`](https://github.com/custom-cards/button-card).
-2. **Dashboard → Upravit → + (přidat pohled) → ⋮ → Upravit v YAML** → vložte obsah souboru `dashboard/fuel_view_<palivo>.yaml` (n95, diesel, lpg, cng) → Uložit. Pro každé palivo jeden pohled.
-3. Kulatá loga řetězců (např. `orlen.png`, `makro.png`, 128 px) se zobrazí, pokud je dáte do `config/www/`. Jde o ochranné známky, proto nejsou součástí repozitáře; chybějící loga se prostě nezobrazí. V pohledu můžete upravit seznam `LOGOS` podle svých řetězců.
-4. Nemáte pro dané palivo oblíbenou stanici? Odstraňte z pohledu první kartu a řádek `…_home` v kartě mapy.
+Integrace obsahuje vlastní kartu **`mbenzin-card`**. Po instalaci (a restartu) stačí:
+
+1. Otevřít dashboard → **Upravit** → **Přidat kartu** → vyhledat **mBenzin**.
+2. Vybrat **palivo** (editor nabídne paliva, která jste nastavili). Hotovo.
+
+Nebo v YAML:
+
+```yaml
+type: custom:mbenzin-card
+fuel: n95            # n95 | benzinplus | diesel | dieselplus | lpg | cng | adblue
+```
+
+Pro každé palivo jedna karta: pro vůz na dvě paliva přidejte druhou kartu s `fuel: lpg`. Karta ukazuje vaši oblíbenou stanici (cena, trendy, pořadí), 5 nejlevnějších stanic (klepnutím se otevře Google Maps), mapu a graf za 30 dní.
+
+| Volba | Výchozí | |
+|---|---|---|
+| `fuel` | – | povinné |
+| `show_map` | `true` | mapa 5 nejlevnějších stanic a vaší oblíbené |
+| `show_graph` | `true` | graf za 30 dní oblíbené stanice |
+| `logos` | `[]` | řetězce, pro které máte logo, např. `[orlen, makro, tesco]` |
+| `logo_path` | `/local/` | kde jsou loga uložena |
+
+Texty karty odpovídají jazyku zvolenému při nastavení. Loga jsou volitelná: kulatá PNG 128 px pojmenovaná podle řetězce (`orlen.png`, …) dejte do `config/www/` a řetězce vypište v `logos`; jde o ochranné známky, proto nejsou součástí. Pokud se karta po aktualizaci nezobrazí, obnovte stránku v prohlížeči (Ctrl+F5).
 
 Upozornění na změnu ceny na telefonu: viz `examples/price_alert.yaml`.
 
