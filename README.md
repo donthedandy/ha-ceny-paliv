@@ -12,7 +12,8 @@ A HACS integration that shows the cheapest stations of **your city** for the fue
 
 ## Features
 
-- Pick your **city**, one or **several fuels** (e.g. Natural 95 + LPG for a dual-fuel car) and a **favourite station per fuel**
+- Pick your **city** (or **a point on the map with a radius**), one or **several fuels** (e.g. Natural 95 + LPG for a dual-fuel car) and a **favourite station per fuel**
+- Follow **as many places as you like** (home, the city you drive to, a holiday area…): one key, an **Add place** button, one card per place
 - Per fuel: the **top 5 cheapest** stations in the city (only that city, not the region), with a Google Maps link, and a **map**
 - Favourite station: price, **trends vs 1/2/7/14/30 days ago**, rank in town, long-term statistics (the 30-day graph)
 - A ready-made **dashboard card** (`ceny-paliv-card`) shipped with the integration — add it from the card picker, no YAML to copy — in **English or Czech** (your choice during setup). It is **flexible**: two columns on a wide dashboard, one on a phone, a compact version, and every part (favourite station, list, map, graph) can be placed as its own card
@@ -33,12 +34,13 @@ mBenzin blocks plain scraping with a browser check, but they give a **personal a
 2. Search for **Ceny paliv**, download it, **restart** Home Assistant.
 3. Settings → Devices & services → **Add integration** → **Ceny paliv**, then:
    1. paste your **access key**
-   2. choose your **city**
-   3. choose your **fuel(s)** and the **language** of the dashboard texts (English / Čeština)
-   4. for each fuel, choose your **favourite station** from the list of stations of your city (or "—" for none)
-   5. optionally tick the **logos** of the chains to show (the chains of your city are preselected; see [Station logos](#4-station-logos-optional))
+   2. choose the **kind of place**: *a town from the list*, or *around a point* (a marker on the map and a radius, 10 km by default, centred on your Home Assistant location)
+   3. choose the town (or move the marker and set the radius)
+   4. choose your **fuel(s)** and the **language** of the dashboard texts (English / Čeština)
+   5. for each fuel, choose your **favourite station** from the stations of the place (or "—" for none)
+   6. optionally tick the **logos** of the chains to show (the chains of your place are preselected; see [Station logos](#4-station-logos-optional))
 
-You can change the fuels, the language, the favourite stations and the logos later: the integration's **Configure** button.
+You can change the place, the fuels, the language, the favourite stations and the logos later: the integration's **Configure** button.
 
 > The setup screens follow Home Assistant's own language (English and Czech are provided). The language chosen in step 3 only sets the labels of the dashboard card.
 
@@ -53,6 +55,14 @@ For each fuel `<fuel>` (`n95`, `benzinplus`, `diesel`, `dieselplus`, `lpg`, `cng
 | `sensor.ceny_paliv_<fuel>_1` … `_5` | the 5 cheapest stations, with latitude/longitude for the map card |
 
 The sensors are named after the station they currently show (for example `1 · Orlen – Bratri Stefanu 69`); the entity ids never change. Prices refresh every 6 hours. If a refresh fails (for example HTTP 429) the last data is kept and the attribute `fetch_error` says why.
+
+## More places (optional)
+
+On the integration page, the **Add place** button adds another town or point with its own fuels and favourite stations: for example your home town and the city you often drive to. The places share the key and the language. Each place has its own sensors and its own card; remove a place from its ⋮ menu.
+
+- **Which kind of place?** A *town* follows the stations that mBenzin files under that town name. Some towns are split by mBenzin into districts (Plzeň has `Plzen`, `Plzen---Koterov`, …), and a few stations are filed under the wrong town. If the list of a town looks incomplete, use *Around a point* instead: every station inside the circle is included, whatever the town name.
+- **Already installed?** Nothing changes by itself: your current place keeps its sensors, its names and its price history. To follow your current place as a point, open **Configure** and choose *Around a point*: the sensors keep their ids and the history stays, you only pick your favourite station again.
+- Sensors of the first place keep the ids `sensor.ceny_paliv_<fuel>_…`; the ones of the other places are `sensor.ceny_paliv_<place>_<fuel>_…` and their names end with the name of the place.
 
 ## 3. The dashboard card (included, nothing else to install)
 
@@ -73,6 +83,7 @@ One card per fuel: for a dual-fuel car add a second card with `fuel: lpg`. The c
 | Option | Default | |
 |---|---|---|
 | `fuel` | – | required |
+| `place` | first place | the name of the place, when you follow several (the visual editor offers a list) |
 | `show` | `[home, list, map, graph]` | the parts to draw: `home` (favourite station), `list` (cheapest stations), `map`, `graph` (30 days) |
 | `layout` | `auto` | `auto`: two columns (station and list on the left, map and graph on the right) when the card is wide, one column when it is narrow, as on a phone; `columns`: always two; `stack`: always one |
 | `stations` | `5` | how many stations in the list (1–5, also on the map) |
@@ -151,7 +162,7 @@ Each station in the `stations` attribute of `sensor.ceny_paliv_<fuel>_top5` has:
 ## Notes
 
 - **E10** is not distinguished by mBenzin: "Natural 95" is the price shown for 95-octane petrol.
-- Entity ids are `sensor.ceny_paliv_<fuel>_…`. A second city would get a `_2` suffix.
+- Entity ids are `sensor.ceny_paliv_<fuel>_…` for the first place and `sensor.ceny_paliv_<place>_<fuel>_…` for the others. Town names are shown with their Czech spelling (Dobřany) when mBenzin gives it.
 - The daily price log used for the trends is stored by Home Assistant and fills up over time (a `*` next to a trend in the card marks a trend computed from a shorter history).
 
 ## 🇨🇿 Česky
