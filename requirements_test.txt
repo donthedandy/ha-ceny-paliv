@@ -1,1 +1,3 @@
 pytest-homeassistant-custom-component==0.13.236
+# imported by Home Assistant's frontend integration (a dependency of this one); not installed by the line above
+home-assistant-frontend==20250411.0
