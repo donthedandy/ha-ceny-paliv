@@ -6,7 +6,11 @@
 
 A HACS integration that shows the cheapest stations of **your city** for the fuel(s) you use — **Natural 95, Diesel, LPG, CNG** and more — plus **your favourite station** with price history and trends. Everything is configured from the Home Assistant UI.
 
-![Dashboard](docs/screenshot.webp)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card.png" alt="The card: favourite station with trends and the 5 cheapest stations, with logos" width="330">
+  &nbsp;
+  <img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/map-graph.png" alt="The map of the cheapest stations and the 30-day graph" width="330">
+</p>
 
 > **Ceny paliv** (Czech for “fuel prices”) is an independent project. The prices come from [mBenzin.cz](https://www.mbenzin.cz); this project is not made, endorsed or supported by mBenzin.cz.
 
@@ -60,6 +64,18 @@ The sensors are named after the station they currently show (for example `1 · O
 
 On the integration page, the **Add place** button adds another town or point with its own fuels and favourite stations: for example your home town and the city you often drive to. The places share the key and the language. Each place has its own sensors and its own card; remove a place from its ⋮ menu.
 
+<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/add-place-button.png" alt="The Add place button on the integration page" width="640"></p>
+
+1. Click **Add place** and choose the **kind of place**: a town from the list, or a point on the map with a radius.
+2. For a point, move the marker (or type the coordinates), set the radius in metres and, if you like, give the place a name. Here: Plzeň, 10 km.
+3. Choose the fuels and your favourite stations, as for the first place.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/add-place-kind.png" alt="Kind of place: a town from the list or around a point" width="300">
+  &nbsp;
+  <img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/add-place-point.png" alt="Point and radius: a marker on the map and a radius of 10 km" width="300">
+</p>
+
 - **Which kind of place?** A *town* follows the stations that mBenzin files under that town name. Some towns are split by mBenzin into districts (Plzeň has `Plzen`, `Plzen---Koterov`, …), and a few stations are filed under the wrong town. If the list of a town looks incomplete, use *Around a point* instead: every station inside the circle is included, whatever the town name.
 - **Already installed?** Nothing changes by itself: your current place keeps its sensors, its names and its price history. To follow your current place as a point, open **Configure** and choose *Around a point*: the sensors keep their ids and the history stays, you only pick your favourite station again.
 - Sensors of the first place keep the ids `sensor.ceny_paliv_<fuel>_…`; the ones of the other places are `sensor.ceny_paliv_<place>_<fuel>_…` and their names end with the name of the place.
@@ -70,6 +86,8 @@ The integration ships its own card, **`ceny-paliv-card`**. After installing (and
 
 1. Open a dashboard → **Edit** → **Add card** → search **Ceny paliv**.
 2. Pick the **fuel** (the visual editor lists the fuels you set up). Done.
+
+<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card-editor.png" alt="The visual editor of the card: parts to show, layout, number of stations" width="360"></p>
 
 Or in YAML:
 

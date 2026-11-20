@@ -6,7 +6,11 @@
 
 Integrace pro HACS, která v Home Assistantu ukazuje ceny paliv z [mBenzin.cz](https://www.mbenzin.cz) pro **vaše město**: **Natural 95, naftu, LPG, CNG** a další. Najdete v ní žebříček nejlevnějších čerpacích stanic, mapu a **vaši oblíbenou stanici** s historií cen a trendy. Všechno se nastavuje v rozhraní Home Assistantu, bez úprav souborů.
 
-![Dashboard](docs/screenshot.webp)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card.png" alt="Karta: oblíbená stanice s trendy a 5 nejlevnějších stanic, s logy" width="330">
+  &nbsp;
+  <img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/map-graph.png" alt="Mapa nejlevnějších stanic a 30denní graf" width="330">
+</p>
 
 > **Ceny paliv** je nezávislý projekt. Ceny pocházejí z [mBenzin.cz](https://www.mbenzin.cz); projekt nevytváří, nepodporuje ani neschvaluje mBenzin.cz.
 
@@ -65,6 +69,20 @@ Senzory se jmenují podle stanice, kterou právě ukazují (např. `1 · Orlen �
 
 Na stránce integrace přidá tlačítko **Přidat místo** další město nebo bod s vlastními palivy a oblíbenými stanicemi: třeba domovské město a město, kam často jezdíte. Místa sdílejí klíč a jazyk. Každé místo má vlastní senzory a vlastní kartu; místo odeberete z jeho nabídky ⋮.
 
+<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/add-place-button.png" alt="Tlačítko Přidat místo na stránce integrace" width="640"></p>
+
+1. Klepněte na **Přidat místo** a vyberte **druh místa**: město ze seznamu, nebo bod na mapě s poloměrem.
+2. U bodu přesuňte značku (nebo zadejte souřadnice), nastavte poloměr v metrech a případně místu dejte název. Zde: Plzeň, 10 km.
+3. Vyberte paliva a oblíbené stanice, stejně jako u prvního místa.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/add-place-kind.png" alt="Druh místa: město ze seznamu nebo kolem bodu" width="300">
+  &nbsp;
+  <img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/add-place-point.png" alt="Bod a poloměr: značka na mapě a poloměr 10 km" width="300">
+</p>
+
+*Snímky obrazovky jsou z anglického rozhraní Home Assistantu; texty se řídí jazykem vašeho HA.*
+
 - **Jaký druh místa?** *Město* sleduje stanice, které mBenzin řadí pod název města. mBenzin některá města dělí na čtvrtě (Plzeň má `Plzen`, `Plzen---Koterov`, …) a několik stanic řadí pod špatné město. Pokud je seznam města neúplný, použijte *Kolem bodu*: zahrnou se všechny stanice uvnitř kruhu bez ohledu na název města.
 - **Už máte nainstalováno?** Samo se nic nezmění: vaše současné místo si ponechá senzory, názvy i historii cen. Chcete-li ho sledovat jako bod, otevřete **Konfigurovat** a zvolte *Kolem bodu*: senzory zůstanou se stejnými identifikátory a historie se zachová, jen znovu vyberete oblíbenou stanici.
 - Senzory prvního místa mají dál identifikátory `sensor.ceny_paliv_<palivo>_…`; u dalších míst je to `sensor.ceny_paliv_<místo>_<palivo>_…` a jejich názvy končí názvem místa.
@@ -75,6 +93,8 @@ Integrace obsahuje vlastní kartu **`ceny-paliv-card`**. Po instalaci (a restart
 
 1. Otevřít dashboard → **Upravit** → **Přidat kartu** → vyhledat **Ceny paliv**.
 2. Vybrat **palivo** (editor nabídne paliva, která jste nastavili). Hotovo.
+
+<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card-editor.png" alt="Vizuální editor karty: zobrazené části, rozvržení, počet stanic" width="360"></p>
 
 Nebo v YAML:
 
