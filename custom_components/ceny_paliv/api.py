@@ -12,6 +12,7 @@ from typing import Any
 
 import aiohttp
 
+from .regions import REGION_NAMES, region_of
 from .const import (
     DEFAULT_LANGUAGE,
     FLAT,
@@ -148,6 +149,9 @@ class Place:
     radius_km: float = 10.0
     fuels: tuple[str, ...] = ()
     homes: dict[str, str] = field(default_factory=dict)
+    source: str = "map"  # where a point is centred: map, home, person or zone (see const.SOURCES)
+    entity: str | None = None  # the person / device tracker / zone, for the sources that have one
+    max_age_days: int | None = None  # show prices up to this old (3 or 7); None = the standard window
 
 
 def distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -159,10 +163,10 @@ def distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
 
 def markers_in_place(markers: list[dict[str, Any]], place: Place) -> list[dict[str, Any]]:
     """The markers that belong to the place (same town slug, or within the radius of the point)."""
-    if place.mode == MODE_POINT and place.lat is not None and place.lng is not None:
-        return [
-            m for m in markers if distance_km(place.lat, place.lng, m["lat"], m["lng"]) <= place.radius_km
-        ]
+    if place.mode == MODE_POINT:
+        if place.lat is None or place.lng is None:
+            return []  # the centre is not known (yet)
+        return [m for m in markers if distance_km(place.lat, place.lng, m["lat"], m["lng"]) <= place.radius_km]
     return [m for m in markers if city_of(m) == place.city]
 
 
@@ -179,11 +183,31 @@ def station_slug(marker: dict[str, Any]) -> str:
     return parts[3] if len(parts) > 3 and parts[3] else parts[-1] or str(marker.get("id", ""))
 
 
+_HOUSE_NUMBER = re.compile(r"\s+(?:č\.?\s*p\.?\s*)?\d+[A-Za-z]?(?:/\d+[A-Za-z]?)?$", re.IGNORECASE)
+
+
+def without_house_number(town: str) -> str:
+    """'Dobřany 456' -> 'Dobřany' (a village address is the village and a number)."""
+    return _HOUSE_NUMBER.sub("", town).strip()
+
+
+def _addr_street(marker: dict[str, Any]) -> str | None:
+    """The street part of mBenzin's `addr` ('Bratří Štefanů 69, Hradec Králové' -> 'Bratří Štefanů 69'), but only
+    when it is the same address as the station's URL slug with its accents: a different text is not trusted."""
+    parts = marker["url"].split("/")
+    addr = str(marker.get("addr") or "").strip()
+    if not addr or len(parts) <= 3 or not parts[3]:
+        return None
+    street = addr.rsplit(",", 1)[0].strip() if "," in addr else addr
+    key = _alnum(street)
+    return _bounded(street) if key and _alnum(parts[3]).endswith(key) else None
+
+
 def address_of(marker: dict[str, Any]) -> str:
-    """The readable address: the station slug with spaces, or the `addr` text when the URL has no station part."""
+    """The readable address, with the Czech accents when mBenzin's `addr` text agrees with the URL; else the slug."""
     parts = marker["url"].split("/")
     if len(parts) > 3 and parts[3]:
-        return pretty(parts[3])
+        return _addr_street(marker) or pretty(parts[3])
     return _bounded(marker.get("addr") or marker["name"])
 
 
@@ -227,7 +251,7 @@ def city_options(markers: list[dict[str, Any]]) -> list[dict[str, str]]:
         if not slug:
             continue
         counter = spelling.setdefault(slug, Counter())
-        town = str(m.get("addr") or "").rsplit(",", 1)[-1].strip()
+        town = without_house_number(str(m.get("addr") or "").rsplit(",", 1)[-1].strip())
         if town and _alnum(town) == _alnum(slug):
             counter[town] += 1
     options = [
@@ -283,6 +307,76 @@ def _trend(log: list[list], price: float, today: dt.date, days: int) -> dict[str
     }
 
 
+def _fresh_enough(marker: dict[str, Any], today: dt.date, max_age: int) -> bool:
+    d = parse_fresh(marker.get("fresh"), today)
+    return d is not None and (today - d).days <= max_age
+
+
+def _average(prices: list[float]) -> float | None:
+    return round(sum(prices) / len(prices), 2) if prices else None
+
+
+def _median(prices: list[float]) -> float | None:
+    if not prices:
+        return None
+    ordered = sorted(prices)
+    mid = len(ordered) // 2
+    return round(ordered[mid] if len(ordered) % 2 else (ordered[mid - 1] + ordered[mid]) / 2, 2)
+
+
+def _diff(value: float | None, reference: float | None) -> float | None:
+    return None if value is None or reference is None else round(value - reference, 2)
+
+
+def price_overview(
+    markers: list[dict[str, Any]], today: dt.date, max_age: int, place_markers: list[dict[str, Any]], centre: tuple[float, float] | None
+) -> dict[str, Any]:
+    """Average prices of the up-to-date stations: the whole country (with the 14 regions), the region of the place and
+    the place itself, and how the place stands against the other two. Only data already downloaded is used."""
+    by_region: dict[str, list[float]] = {}
+    country: list[float] = []
+    for m in markers:
+        if not _fresh_enough(m, today, max_age):
+            continue
+        country.append(m["price"])
+        code = region_of(m["lat"], m["lng"])
+        if code:
+            by_region.setdefault(code, []).append(m["price"])
+    national = _average(country)
+    ranked = sorted(by_region.items(), key=lambda item: sum(item[1]) / len(item[1]))
+    regions = [
+        {
+            "code": code,
+            "name": REGION_NAMES.get(code, code),
+            "average": _average(prices),
+            "station_count": len(prices),
+            "vs_national": _diff(_average(prices), national),
+            "rank": rank,
+        }
+        for rank, (code, prices) in enumerate(ranked, 1)
+    ]
+    # the region of the place: its centre for a point, else where most of its stations are
+    own = [m for m in place_markers if _fresh_enough(m, today, max_age)]
+    code = region_of(*centre) if centre else None
+    if code is None and own:
+        found = Counter(c for c in (region_of(m["lat"], m["lng"]) for m in own) if c)
+        code = found.most_common(1)[0][0] if found else None
+    region = next((r for r in regions if r["code"] == code), None)
+    area_avg = _average([m["price"] for m in own])
+    return {
+        "country": {"average": national, "median": _median(country), "station_count": len(country), "regions": regions},
+        "region": region,
+        "area": {
+            "average": area_avg,
+            "station_count": len(own),
+            "region": region["name"] if region else None,
+            "region_rank": region["rank"] if region else None,
+            "vs_national": _diff(area_avg, national),
+            "vs_region": _diff(area_avg, region["average"] if region else None),
+        },
+    }
+
+
 def build_payload(
     markers: list[dict[str, Any]],
     *,
@@ -300,6 +394,8 @@ def build_payload(
     today = now.date()
     label, unit = FUELS.get(fuel, (fuel, "Kč/l"))
     max_age = MAX_AGE_DAYS_BY_FUEL.get(fuel, MAX_AGE_DAYS_DEFAULT)
+    if place.max_age_days:
+        max_age = max(max_age, place.max_age_days)  # "show older prices too" only ever widens the window
     in_city = markers_in_place(markers, place)
 
     cutoff = (today - dt.timedelta(days=HISTORY_DAYS)).isoformat()
@@ -315,6 +411,8 @@ def build_payload(
         out = {
             "rank": rank,
             "name": _bounded(m["name"]),
+            "title": station_title(_bounded(m["name"]), address_of(m)),
+            "url": m["url"],
             "chain": _bounded(m.get("chain") or m["name"]),
             "address": address_of(m),
             "street": street_of(_bounded(m["name"]), address_of(m)),
@@ -357,8 +455,10 @@ def build_payload(
                 home["vs_cheapest"] = round(m["price"] - kept[0][0]["price"], 2)
             break
 
+    centre = (place.lat, place.lng) if place.mode == MODE_POINT and place.lat is not None and place.lng is not None else None
     stamp = now.isoformat(timespec="seconds")
     return {
+        "averages": price_overview(markers, today, max_age, in_city, centre),
         "stations": stations,
         "home": home,
         "fetched_at": stamp,

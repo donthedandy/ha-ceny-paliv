@@ -22,8 +22,13 @@ from homeassistant.config_entries import (
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    EntitySelector,
+    EntitySelectorConfig,
     LocationSelector,
     LocationSelectorConfig,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -45,8 +50,10 @@ from .api import (
     pretty,
     station_options,
 )
+from .location import centre_of
 from .const import (
     CONF_CITY,
+    CONF_ENTITY,
     CONF_FUELS,
     CONF_HOMES,
     CONF_KEY,
@@ -55,9 +62,11 @@ from .const import (
     CONF_LOCATION,
     CONF_LOGOS,
     CONF_LONGITUDE,
+    CONF_MAX_AGE_DAYS,
     CONF_MODE,
     CONF_NAME,
     CONF_RADIUS,
+    CONF_SOURCE,
     CONF_STATION,
     DEFAULT_FUELS,
     DEFAULT_LANGUAGE,
@@ -66,6 +75,12 @@ from .const import (
     FUELS,
     LANGUAGES,
     NONE_VALUE,
+    OLDER_PRICES_DAYS,
+    SOURCE_HOME,
+    SOURCE_MAP,
+    SOURCE_PERSON,
+    SOURCE_ZONE,
+    SOURCES,
     SUBENTRY_PLACE,
 )
 from .logos import async_fetch_index, async_sync, chains_in, installed_ids, logo_dir
@@ -114,36 +129,44 @@ class _PlaceSteps:
         return cache[fuel]
 
     def _place(self) -> Place:
+        """The place as chosen so far; a point that follows something is looked up where it is now."""
         st = self._state()
+        lat, lng = st.get("latitude"), st.get("longitude")
+        source = st.get("source", SOURCE_MAP)
+        if st["mode"] == MODE_POINT and source != SOURCE_MAP:
+            centre, _ = centre_of(self.hass, source, st.get("entity"), None, None)
+            lat, lng = centre if centre else (None, None)
         return Place(
             key="tmp",
             title=st.get("title", ""),
             mode=st["mode"],
             city=st.get("city"),
-            lat=st.get("latitude"),
-            lng=st.get("longitude"),
+            lat=lat,
+            lng=lng,
             radius_km=st.get("radius", DEFAULT_RADIUS_KM),
+            source=source,
+            entity=st.get("entity"),
         )
 
     def _place_data(self) -> dict[str, Any]:
         """What is stored for the place."""
         st = self._state()
-        if st["mode"] == MODE_POINT:
-            return {
-                CONF_MODE: MODE_POINT,
-                CONF_LATITUDE: st["latitude"],
-                CONF_LONGITUDE: st["longitude"],
-                CONF_RADIUS: st["radius"],
-                CONF_NAME: st["title"],
-            }
-        return {CONF_MODE: MODE_CITY, CONF_CITY: st["city"], CONF_NAME: st["title"]}
+        if st["mode"] != MODE_POINT:
+            return {CONF_MODE: MODE_CITY, CONF_CITY: st["city"], CONF_NAME: st["title"]}
+        source = st.get("source", SOURCE_MAP)
+        data: dict[str, Any] = {CONF_MODE: MODE_POINT, CONF_SOURCE: source, CONF_RADIUS: st["radius"], CONF_NAME: st["title"]}
+        if source == SOURCE_MAP:
+            data.update({CONF_LATITUDE: st["latitude"], CONF_LONGITUDE: st["longitude"]})
+        elif source in (SOURCE_PERSON, SOURCE_ZONE):
+            data[CONF_ENTITY] = st["entity"]
+        return data
 
     # --- place -------------------------------------------------------------------------------------------------
     async def async_step_mode(self, user_input: dict[str, Any] | None = None) -> Any:
         st = self._state()
         if user_input is not None:
             st["mode"] = user_input[CONF_MODE]
-            return await (self.async_step_city() if st["mode"] == MODE_CITY else self.async_step_point())
+            return await (self.async_step_city() if st["mode"] == MODE_CITY else self.async_step_source())
         schema = vol.Schema(
             {
                 vol.Required(CONF_MODE, default=st["initial"].get(CONF_MODE, MODE_CITY)): SelectSelector(
@@ -177,6 +200,7 @@ class _PlaceSteps:
         st = self._state()
         if user_input is not None:
             loc = user_input[CONF_LOCATION]
+            st["source"] = SOURCE_MAP
             st["latitude"] = round(float(loc["latitude"]), 5)
             st["longitude"] = round(float(loc["longitude"]), 5)
             km = float(loc.get("radius", DEFAULT_RADIUS_KM * 1000)) / 1000
@@ -201,6 +225,72 @@ class _PlaceSteps:
         )
         return self.async_show_form(step_id="point", data_schema=schema)
 
+    async def async_step_source(self, user_input: dict[str, Any] | None = None) -> Any:
+        """Where the point is: picked on the map, the Home Assistant home, a person or device, or a zone."""
+        st = self._state()
+        if user_input is not None:
+            st["source"] = user_input[CONF_SOURCE]
+            step = {
+                SOURCE_MAP: self.async_step_point,
+                SOURCE_HOME: self.async_step_point_home,
+                SOURCE_PERSON: self.async_step_point_person,
+                SOURCE_ZONE: self.async_step_point_zone,
+            }[st["source"]]
+            return await step()
+        default = st["initial"].get(CONF_SOURCE, SOURCE_MAP)
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_SOURCE, default=default if default in SOURCES else SOURCE_MAP): SelectSelector(
+                    SelectSelectorConfig(options=list(SOURCES), mode=SelectSelectorMode.LIST, translation_key="source")
+                )
+            }
+        )
+        return self.async_show_form(step_id="source", data_schema=schema)
+
+    async def _async_step_around(
+        self, step_id: str, user_input: dict[str, Any] | None, domains: list[str] | None
+    ) -> Any:
+        """Radius (and the person or zone) around a centre that is not picked on the map."""
+        st = self._state()
+        ini = st["initial"]
+        if user_input is not None:
+            entity = user_input.get(CONF_ENTITY) if domains else None
+            km = float(user_input.get(CONF_RADIUS, DEFAULT_RADIUS_KM))
+            st["radius"] = round(min(max(km, MIN_RADIUS_KM), MAX_RADIUS_KM), 1)
+            st["entity"] = entity
+            name = (user_input.get(CONF_NAME) or "").strip()
+            if not name:
+                state = self.hass.states.get(entity) if entity else None
+                label = state.name if state else (self.hass.config.location_name or "Home")
+                name = f"{label} · {st['radius']:g} km"
+            st["title"] = name
+            return await self.async_step_fuels()
+        same = ini.get(CONF_SOURCE) == st["source"]
+        fields: dict[Any, Any] = {}
+        if domains:
+            default = ini.get(CONF_ENTITY) if same else None
+            fields[vol.Required(CONF_ENTITY, default=default) if default else vol.Required(CONF_ENTITY)] = EntitySelector(
+                EntitySelectorConfig(domain=domains)
+            )
+        fields[vol.Required(CONF_RADIUS, default=float(ini.get(CONF_RADIUS, DEFAULT_RADIUS_KM)) if same else DEFAULT_RADIUS_KM)] = (
+            NumberSelector(
+                NumberSelectorConfig(
+                    min=MIN_RADIUS_KM, max=MAX_RADIUS_KM, step=1, unit_of_measurement="km", mode=NumberSelectorMode.BOX
+                )
+            )
+        )
+        fields[vol.Optional(CONF_NAME, default=(ini.get(CONF_NAME) or "") if same else "")] = TextSelector()
+        return self.async_show_form(step_id=step_id, data_schema=vol.Schema(fields))
+
+    async def async_step_point_home(self, user_input: dict[str, Any] | None = None) -> Any:
+        return await self._async_step_around("point_home", user_input, None)
+
+    async def async_step_point_person(self, user_input: dict[str, Any] | None = None) -> Any:
+        return await self._async_step_around("point_person", user_input, ["person", "device_tracker"])
+
+    async def async_step_point_zone(self, user_input: dict[str, Any] | None = None) -> Any:
+        return await self._async_step_around("point_zone", user_input, ["zone"])
+
     # --- fuels -------------------------------------------------------------------------------------------------
     async def async_step_fuels(self, user_input: dict[str, Any] | None = None) -> Any:
         st = self._state()
@@ -222,6 +312,8 @@ class _PlaceSteps:
                     errors["base"] = _error_key(err)
                 else:
                     st.update(fuels=fuels, stations=stations, chains=chains, queue=list(fuels), homes={})
+                    older = user_input.get(CONF_MAX_AGE_DAYS)
+                    st["max_age_days"] = int(older) if older and older != "standard" else None
                     if self._ask_language:
                         st["language"] = user_input[CONF_LANGUAGE]
                     return await self.async_step_station()
@@ -234,6 +326,14 @@ class _PlaceSteps:
                 )
             )
         }
+        saved_age = st["initial"].get(CONF_MAX_AGE_DAYS)
+        fields[vol.Optional(CONF_MAX_AGE_DAYS, default=str(saved_age) if saved_age else "standard")] = SelectSelector(
+            SelectSelectorConfig(
+                options=["standard", *[str(d) for d in OLDER_PRICES_DAYS]],
+                mode=SelectSelectorMode.DROPDOWN,
+                translation_key="max_age",
+            )
+        )
         if self._ask_language:
             fields[vol.Required(CONF_LANGUAGE, default=self._default_language())] = SelectSelector(
                 SelectSelectorConfig(
@@ -324,6 +424,8 @@ class _PlaceSteps:
         """Entry options of the first place: fuels, favourite stations, language, logos."""
         st = self._state()
         options = {CONF_FUELS: st["fuels"], CONF_HOMES: st["homes"], CONF_LANGUAGE: st["language"]}
+        if st.get("max_age_days"):
+            options[CONF_MAX_AGE_DAYS] = st["max_age_days"]
         logos = st.get("logos")
         if logos is None:
             logos = (previous or {}).get(CONF_LOGOS)
@@ -456,6 +558,8 @@ class CenyPalivPlaceFlow(_PlaceSteps, ConfigSubentryFlow):
     async def _async_finish(self) -> SubentryFlowResult:
         st = self._state()
         data = {**self._place_data(), CONF_FUELS: st["fuels"], CONF_HOMES: st["homes"]}
+        if st.get("max_age_days"):
+            data[CONF_MAX_AGE_DAYS] = st["max_age_days"]
         if self.source == "reconfigure":
             return self.async_update_and_abort(
                 self._get_entry(), self._get_reconfigure_subentry(), title=st["title"], data=data

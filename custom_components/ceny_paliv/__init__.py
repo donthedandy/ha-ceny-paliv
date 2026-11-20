@@ -17,7 +17,7 @@ from .coordinator import CenyPalivConfigEntry, CenyPalivCoordinator, no_data_iss
 from .logos import ID_RE, logo_dir
 from .services import async_setup_services
 
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "event"]
 
 
 class CenyPalivCardView(HomeAssistantView):

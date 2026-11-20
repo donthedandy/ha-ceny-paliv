@@ -6,7 +6,7 @@ from datetime import timedelta
 DOMAIN = "ceny_paliv"
 
 CARD_URL = "/ceny_paliv_static/ceny-paliv-card.js"
-CARD_VERSION = "0.6.0"
+CARD_VERSION = "0.7.0"
 
 # Optional station logos (pack in the GitHub repository, downloaded on request, see logos.py)
 LOGO_URL = "/ceny_paliv_static/logos"  # served from <config>/ceny_paliv_logos/
@@ -28,6 +28,18 @@ CONF_LATITUDE = "latitude"
 CONF_LONGITUDE = "longitude"
 CONF_RADIUS = "radius"  # km
 CONF_LOCATION = "location"  # LocationSelector value in the forms
+
+CONF_SOURCE = "source"  # where a point place is centred: SOURCE_*
+CONF_ENTITY = "entity"  # the person, device tracker or zone of SOURCE_PERSON / SOURCE_ZONE
+CONF_MAX_AGE_DAYS = "max_age_days"  # show prices up to this old (3 or 7), None = the standard window
+
+SOURCE_MAP = "map"  # a point picked on the map (or typed coordinates)
+SOURCE_HOME = "home"  # the Home Assistant home location
+SOURCE_PERSON = "person"  # a person or device tracker: the area moves with it
+SOURCE_ZONE = "zone"  # a zone: the area follows the zone if it is moved
+SOURCES = (SOURCE_MAP, SOURCE_HOME, SOURCE_PERSON, SOURCE_ZONE)
+PERSON_MOVE_KM = 1.0  # the area of a followed person is computed again after this much movement
+OLDER_PRICES_DAYS = (3, 7)
 
 SUBENTRY_PLACE = "place"
 DEFAULT_RADIUS_KM = 10
@@ -112,6 +124,10 @@ LABELS: dict[str, dict[str, str]] = {
         "vs_yesterday": "vs yesterday",
         "name_cheapest": "cheapest",
         "name_home": "favourite station",
+        "name_events": "price change",
+        "avg_national": "average · Czech Republic",
+        "avg_region": "average · region",
+        "avg_area": "average · area",
     },
     "cs": {
         "locale": "cs-CZ",
@@ -147,5 +163,9 @@ LABELS: dict[str, dict[str, str]] = {
         "vs_yesterday": "oproti včerejšku",
         "name_cheapest": "nejlevnější",
         "name_home": "oblíbená stanice",
+        "name_events": "změna ceny",
+        "avg_national": "průměr · Česko",
+        "avg_region": "průměr · kraj",
+        "avg_area": "průměr · oblast",
     },
 }

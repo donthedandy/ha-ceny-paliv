@@ -16,15 +16,12 @@ from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-
-from homeassistant.util import slugify
 
 from .api import MAIN_PLACE, Place, station_title
-from .const import ATTRIBUTION, DOMAIN, FUELS, SOURCE_URL, TOP
+from .const import DOMAIN, TOP
 from .coordinator import CenyPalivConfigEntry, CenyPalivCoordinator
+from .entity import CenyPalivBaseEntity
 
 TOP_ATTRIBUTES = (
     "stations",
@@ -57,6 +54,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: CenyPalivConfigEntry, as
             if place.homes.get(fuel):
                 entities.append(CenyPalivHomeSensor(coordinator, entry, place, fuel))
             entities.extend(CenyPalivPositionSensor(coordinator, entry, place, fuel, i) for i in range(TOP))
+            entities.extend(CenyPalivAverageSensor(coordinator, entry, place, fuel, kind) for kind in AVERAGE_KINDS)
         per_place.append((place, entities))
     # before the entities are added: a favourite sensor that comes back must not be added while still disabled
     _tidy_registry(hass, entry, {e.unique_id for _, entities in per_place for e in entities if e.unique_id})
@@ -76,7 +74,7 @@ def _tidy_registry(hass: HomeAssistant, entry: CenyPalivConfigEntry, wanted: set
     """
     registry = er.async_get(hass)
     for reg in er.async_entries_for_config_entry(registry, entry.entry_id):
-        if reg.platform != DOMAIN or not reg.unique_id:
+        if reg.platform != DOMAIN or reg.domain != "sensor" or not reg.unique_id:
             continue
         if reg.unique_id in wanted:
             if reg.unique_id.endswith("_home") and reg.disabled_by is er.RegistryEntryDisabler.INTEGRATION:
@@ -90,60 +88,14 @@ def _tidy_registry(hass: HomeAssistant, entry: CenyPalivConfigEntry, wanted: set
             registry.async_remove(reg.entity_id)
 
 
-class CenyPalivEntity(CoordinatorEntity[CenyPalivCoordinator], SensorEntity):
-    """Base: one fuel of one city."""
-
-    _attr_has_entity_name = False  # keeps the entity ids predictable: sensor.ceny_paliv_<fuel>_...
-    _attr_attribution = ATTRIBUTION  # mBenzin asks for the source to be shown with its prices
+class CenyPalivEntity(CenyPalivBaseEntity, SensorEntity):
+    """Base of the sensors: one fuel of one place."""
 
     def __init__(
         self, coordinator: CenyPalivCoordinator, entry: CenyPalivConfigEntry, place: Place, fuel: str, suffix: str
     ) -> None:
-        super().__init__(coordinator)
-        self._place = place
-        self._fuel = fuel
-        if place.key == MAIN_PLACE:
-            # the first place keeps the ids it had before places existed
-            self._attr_unique_id = f"{entry.entry_id}_{fuel}_{suffix}"
-            self.entity_id = f"sensor.ceny_paliv_{fuel}_{suffix}"  # suggestion for new installs
-        else:
-            self._attr_unique_id = f"{entry.entry_id}_{place.key}_{fuel}_{suffix}"
-            self.entity_id = f"sensor.ceny_paliv_{slugify(place.title)}_{fuel}_{suffix}"
+        super().__init__(coordinator, entry, place, fuel, suffix)
         self._attr_name = f"Ceny paliv {fuel} {suffix}"
-        self._attr_native_unit_of_measurement = FUELS.get(fuel, (fuel, "Kč/l"))[1]
-        # One device per place. Entity names do not use the device name (has_entity_name is False), so the station
-        # stays visible in narrow cards.
-        device_id = entry.entry_id if place.key == MAIN_PLACE else f"{entry.entry_id}_{place.key}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, device_id)},
-            name=f"Ceny paliv {place.title}",
-            entry_type=DeviceEntryType.SERVICE,
-            manufacturer="mBenzin.cz",
-            configuration_url=SOURCE_URL,
-        )
-
-    @property
-    def available(self) -> bool:
-        """Unavailable when the fuel has had no fresh prices for a day (a short outage keeps the last prices)."""
-        return super().available and self._fuel not in self.coordinator.stale_fuels
-
-    @property
-    def _payload(self) -> dict[str, Any]:
-        return ((self.coordinator.data or {}).get(self._place.key) or {}).get(self._fuel) or {}
-
-    @property
-    def _where(self) -> str:
-        """' · <place>' once there are several places, so the names stay distinct (the first place keeps its names)."""
-        if self._place.key == MAIN_PLACE or len(self.coordinator.places) < 2:
-            return ""
-        return f" · {self._place.title}"
-
-    @property
-    def _label(self) -> str:
-        return self._payload.get("fuel_label") or FUELS.get(self._fuel, (self._fuel,))[0]
-
-    def _word(self, key: str, default: str) -> str:
-        return (self._payload.get("labels") or {}).get(key, default)
 
 
 class CenyPalivTop5Sensor(CenyPalivEntity):
@@ -251,4 +203,63 @@ class CenyPalivPositionSensor(CenyPalivEntity):
                 latitude=None if s["home"] else s["lat"],
                 longitude=None if s["home"] else s["lng"],
             )
+        return attrs
+
+
+AVERAGE_KINDS = ("national_average", "region_average", "area_average")
+
+
+class CenyPalivAverageSensor(CenyPalivEntity):
+    """Average price of the up-to-date stations: the country, the region of the place, or the place itself.
+
+    state_class=measurement gives long-term statistics. Computed from the same download as everything else.
+    """
+
+    _attr_icon = "mdi:chart-line"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator, entry, place, fuel, kind: str) -> None:
+        super().__init__(coordinator, entry, place, fuel, kind)
+        self._kind = kind
+
+    @property
+    def _data(self) -> dict[str, Any] | None:
+        averages = self._payload.get("averages") or {}
+        return averages.get({"national_average": "country", "region_average": "region", "area_average": "area"}[self._kind])
+
+    @property
+    def name(self) -> str:
+        word = {
+            "national_average": self._word("avg_national", "average · Czech Republic"),
+            "region_average": self._word("avg_region", "average · region"),
+            "area_average": self._word("avg_area", "average · area"),
+        }[self._kind]
+        return f"{self._label} · {word}{self._where}"
+
+    @property
+    def available(self) -> bool:
+        return super().available and bool(self._data) and self._data.get("average") is not None
+
+    @property
+    def native_value(self) -> float | None:
+        return self._data.get("average") if self._data else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        data = self._data or {}
+        attrs: dict[str, Any] = {"station_count": data.get("station_count")}
+        if self._kind == "national_average":
+            attrs.update(median=data.get("median"), regions=data.get("regions"))
+        elif self._kind == "region_average":
+            attrs.update(
+                region=data.get("name"), region_code=data.get("code"), rank=data.get("rank"), vs_national=data.get("vs_national")
+            )
+        else:
+            attrs.update(
+                region=data.get("region"),
+                region_rank=data.get("region_rank"),
+                vs_national=data.get("vs_national"),
+                vs_region=data.get("vs_region"),
+            )
+        attrs.update(cp_fuel=self._fuel, cp_role=self._kind, cp_place=self._place.key, cp_place_name=self._place.title)
         return attrs
