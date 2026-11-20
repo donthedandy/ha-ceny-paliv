@@ -199,6 +199,15 @@ Každá stanice v atributu `stations` senzoru `sensor.ceny_paliv_<palivo>_top5` 
 - Entity se jmenují `sensor.ceny_paliv_<palivo>_…` u prvního místa a `sensor.ceny_paliv_<místo>_<palivo>_…` u ostatních. Názvy měst se zobrazují s českým pravopisem (Dobřany), pokud ho mBenzin uvádí.
 - Denní záznam cen potřebný pro trendy ukládá Home Assistant a postupně se plní (hvězdička u trendu v kartě označuje trend z kratší historie).
 
+## Plán vývoje
+
+Co se chystá, je vidět veřejně, každá funkce má vlastní issue:
+
+- **[v0.7.0](https://github.com/donthedandy/ha-ceny-paliv/milestone/1)** – chytřejší data: sledování osoby nebo zařízení, další zdroje polohy, průměrné ceny, starší ceny, čistší adresy, události o změně ceny a blueprinty.
+- **[v0.8.0](https://github.com/donthedandy/ha-ceny-paliv/milestone/2)** – bohatší karta: detail stanice s navigací, řazení, srovnávací graf, cena plné nádrže, další mapy, odznak a dlaždice.
+
+Nápady i hlasy jsou vítány: otevřete issue nebo přidejte 👍 u té, kterou chcete.
+
 ## Poděkování
 
 Práce na spolehlivosti ve verzi 0.6 (čekání po HTTP 429, žádost o nový klíč, diagnostika, Opravy, akce obnovení) byla inspirována [forkem Vituhlose](https://github.com/Vituhlos/ha-ceny-paliv) tohoto projektu, rovněž pod licencí MIT. Děkuji!
