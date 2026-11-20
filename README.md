@@ -80,6 +80,15 @@ On the integration page, the **Add place** button adds another town or point wit
 - **Already installed?** Nothing changes by itself: your current place keeps its sensors, its names and its price history. To follow your current place as a point, open **Configure** and choose *Around a point*: the sensors keep their ids and the history stays, you only pick your favourite station again.
 - Sensors of the first place keep the ids `sensor.ceny_paliv_<fuel>_…`; the ones of the other places are `sensor.ceny_paliv_<place>_<fuel>_…` and their names end with the name of the place.
 
+## When something goes wrong
+
+- **mBenzin answers "too many requests" (HTTP 429):** the integration keeps the last prices, flags the problem in the attribute `fetch_error` and sends **no request at all** until the time mBenzin asked for (`Retry-After`, at most 24 hours; without it, almost one refresh interval). It does not hammer the server.
+- **mBenzin refuses your key:** after a clear refusal (or an unreadable answer twice in a row) Home Assistant shows **Reauthenticate** on the integration: enter the new key and everything continues, no need to delete anything.
+- **No fresh prices for 24 hours:** the sensors become **unavailable** and a **Repairs** notice explains which fuels, since when and where to look. They come back by themselves. Shorter outages keep the last prices.
+- **Refresh now:** the action `ceny_paliv.refresh` loads the prices immediately (optionally for one entry: `config_entry_id`). Data downloaded less than 30 minutes ago is not downloaded again, so it cannot flood mBenzin.
+- **Diagnostics:** *Download diagnostics* on the integration gives the settings and the state of the last refresh, without your key and without the places or favourite stations that point to where you live.
+- Each place has its own **device** (the sensors are grouped under it); removing a fuel removes its sensors, and a favourite you remove is kept as a disabled diagnostic sensor so its history is not lost. Malformed entries in mBenzin's data are skipped instead of stopping the refresh.
+
 ## 3. The dashboard card (included, nothing else to install)
 
 The integration ships its own card, **`ceny-paliv-card`**. After installing (and restarting) just:
@@ -186,6 +195,10 @@ Each station in the `stations` attribute of `sensor.ceny_paliv_<fuel>_top5` has:
 ## 🇨🇿 Česky
 
 Úplný český popis (získání klíče, instalace přes HACS, senzory, dashboard) najdete v **[README.cs.md](README.cs.md)**. Stručně: klíč zdarma na reklama@mbenzin.cz, HACS → Vlastní repozitáře → `https://github.com/donthedandy/ha-ceny-paliv` (Integrace) → restart → Přidat integraci **Ceny paliv**.
+
+## Credits
+
+The reliability work of 0.6 (waiting after HTTP 429, asking for a new key, diagnostics, Repairs, the refresh action) was inspired by [Vituhlos's fork](https://github.com/Vituhlos/ha-ceny-paliv) of this project, also MIT licensed. Thank you!
 
 ## License
 

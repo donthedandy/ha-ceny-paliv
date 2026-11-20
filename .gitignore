@@ -3,3 +3,5 @@ secrets.yaml
 .mbenzin_history.json
 *.tmp
 .DS_Store
+__pycache__/
+.pytest_cache/

@@ -87,6 +87,15 @@ Na stránce integrace přidá tlačítko **Přidat místo** další město nebo 
 - **Už máte nainstalováno?** Samo se nic nezmění: vaše současné místo si ponechá senzory, názvy i historii cen. Chcete-li ho sledovat jako bod, otevřete **Konfigurovat** a zvolte *Kolem bodu*: senzory zůstanou se stejnými identifikátory a historie se zachová, jen znovu vyberete oblíbenou stanici.
 - Senzory prvního místa mají dál identifikátory `sensor.ceny_paliv_<palivo>_…`; u dalších míst je to `sensor.ceny_paliv_<místo>_<palivo>_…` a jejich názvy končí názvem místa.
 
+## Když se něco pokazí
+
+- **mBenzin odpoví „příliš mnoho požadavků“ (HTTP 429):** integrace ponechá poslední ceny, problém uvede v atributu `fetch_error` a **neposílá žádné požadavky**, dokud neuplyne doba, kterou mBenzin požaduje (`Retry-After`, nejvýše 24 hodin; bez ní téměř jeden interval obnovení). Server tedy nezahlcuje.
+- **mBenzin odmítne váš klíč:** po jasném odmítnutí (nebo po dvou nečitelných odpovědích za sebou) zobrazí Home Assistant u integrace **Znovu ověřit**: zadáte nový klíč a vše pokračuje, nic nemusíte mazat.
+- **24 hodin bez nových cen:** senzory se stanou **nedostupnými** a upozornění v **Opravách** vysvětlí, která paliva, od kdy a kde hledat. Samy se vrátí. Kratší výpadky ponechají poslední ceny.
+- **Obnovit hned:** akce `ceny_paliv.refresh` načte ceny okamžitě (volitelně jen pro jednu položku: `config_entry_id`). Data stažená před méně než 30 minutami se znovu nestahují, takže mBenzin nezahltíte.
+- **Diagnostika:** *Stáhnout diagnostiku* u integrace poskytne nastavení a stav posledního obnovení, bez vašeho klíče a bez míst či oblíbených stanic, které prozradí, kde bydlíte.
+- Každé místo má vlastní **zařízení** (senzory jsou pod ním seskupeny); odebrání paliva odebere jeho senzory a odebraná oblíbená stanice zůstane jako vypnutý diagnostický senzor, aby se neztratila historie. Poškozené záznamy v datech mBenzinu se přeskočí a obnovení nezastaví.
+
 ## 3. Karta pro dashboard (je součástí, nic dalšího se neinstaluje)
 
 Integrace obsahuje vlastní kartu **`ceny-paliv-card`**. Po instalaci (a restartu) stačí:
@@ -189,6 +198,10 @@ Každá stanice v atributu `stations` senzoru `sensor.ceny_paliv_<palivo>_top5` 
 - **E10** mBenzin nerozlišuje: u Natural 95 jde o cenu pro všechny 95oktanové benzíny.
 - Entity se jmenují `sensor.ceny_paliv_<palivo>_…` u prvního místa a `sensor.ceny_paliv_<místo>_<palivo>_…` u ostatních. Názvy měst se zobrazují s českým pravopisem (Dobřany), pokud ho mBenzin uvádí.
 - Denní záznam cen potřebný pro trendy ukládá Home Assistant a postupně se plní (hvězdička u trendu v kartě označuje trend z kratší historie).
+
+## Poděkování
+
+Práce na spolehlivosti ve verzi 0.6 (čekání po HTTP 429, žádost o nový klíč, diagnostika, Opravy, akce obnovení) byla inspirována [forkem Vituhlose](https://github.com/Vituhlos/ha-ceny-paliv) tohoto projektu, rovněž pod licencí MIT. Děkuji!
 
 ## Licence
 
