@@ -1,0 +1,105 @@
+blueprint:
+  name: Ceny paliv – favourite station price change
+  description: >-
+    Tells you when the price at your favourite station changes: only when it gets cheaper, or both ways.
+    It listens to the fuel's price-change event entity, so it keeps working when you choose another favourite station.
+    Česky: upozornění, když oblíbená stanice zlevní (nebo zdraží).
+  domain: automation
+  author: Ceny paliv
+  source_url: https://github.com/donthedandy/ha-ceny-paliv/blob/main/blueprints/automation/ceny_paliv/favourite_price_change.yaml
+  homeassistant:
+    min_version: "2025.3.0"
+  input:
+    price_events:
+      name: Price-change event
+      description: The fuel's event entity of the place, for example `event.ceny_paliv_n95_price_change`.
+      selector:
+        entity:
+          filter:
+            - integration: ceny_paliv
+              domain: event
+    direction:
+      name: Which changes
+      default: cheaper
+      selector:
+        select:
+          options:
+            - label: Only when it gets cheaper
+              value: cheaper
+            - label: Cheaper and dearer
+              value: both
+    min_change:
+      name: Smallest change
+      description: Smaller changes are ignored.
+      default: 0.1
+      selector:
+        number:
+          min: 0
+          max: 5
+          step: 0.01
+          unit_of_measurement: Kč
+          mode: box
+    language:
+      name: Message language
+      default: en
+      selector:
+        select:
+          options:
+            - label: English
+              value: en
+            - label: Čeština
+              value: cs
+    actions:
+      name: Actions
+      description: >-
+        What to do, for example notify your phone with `{{ title }}` and `{{ message }}`. Also available:
+        `{{ station }}`, `{{ price }}`, `{{ previous_price }}`, `{{ change }}`, `{{ unit }}` and `{{ maps }}`
+        (a Google Maps link).
+      default:
+        - action: persistent_notification.create
+          data:
+            title: "{{ title }}"
+            message: "{{ message }}"
+      selector:
+        action: {}
+
+mode: queued
+max: 5
+
+triggers:
+  - trigger: state
+    entity_id: !input price_events
+    # coming back after a restart or a reload is not a new event
+    not_from: [unavailable]
+    not_to: [unavailable, unknown]
+
+variables:
+  direction: !input direction
+  min_change: !input min_change
+  language: !input language
+  event: "{{ trigger.to_state.attributes }}"
+  wanted: >-
+    {{ ['favourite_cheaper'] if direction == 'cheaper' else ['favourite_cheaper', 'favourite_dearer'] }}
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ event.event_type in wanted and (event.change | float(0)) | abs >= min_change | float(0) }}
+
+actions:
+  - variables:
+      station: "{{ event.station }}"
+      price: "{{ event.price }}"
+      previous_price: "{{ event.previous_price }}"
+      change: "{{ event.change }}"
+      unit: "{{ event.unit }}"
+      maps: "{{ event.maps }}"
+      cheaper: "{{ event.event_type == 'favourite_cheaper' }}"
+      title: >-
+        {% if language == 'cs' %}⛽ {{ event.fuel }}: cena {{ 'klesla' if cheaper else 'stoupla' }}
+        {%- else %}⛽ {{ event.fuel }}: price {{ 'down' if cheaper else 'up' }}{% endif %}
+      message: >-
+        {{ station }}: {{ '%.2f' | format(price | float) }} {{ unit }}
+        ({{ '▼' if cheaper else '▲' }} {{ '%.2f' | format(change | float | abs) }},
+        {{- ' dříve ' if language == 'cs' else ' was ' }}{{ '%.2f' | format(previous_price | float) }})
+  - sequence: !input actions

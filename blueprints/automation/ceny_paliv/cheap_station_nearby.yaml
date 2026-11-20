@@ -1,0 +1,101 @@
+blueprint:
+  name: Ceny paliv – cheap station near me
+  description: >-
+    For a place that follows a person or device ("Around a person or device"): tells you when a new cheapest price
+    appears within the distance you choose, optionally under a price limit. Useful on the road.
+    Česky: upozornění na levnou stanici v okolí, pro místo, které sleduje osobu nebo zařízení.
+  domain: automation
+  author: Ceny paliv
+  source_url: https://github.com/donthedandy/ha-ceny-paliv/blob/main/blueprints/automation/ceny_paliv/cheap_station_nearby.yaml
+  homeassistant:
+    min_version: "2025.3.0"
+  input:
+    price_events:
+      name: Price-change event
+      description: The event entity of the place that follows you, for example `event.ceny_paliv_n95_price_change`.
+      selector:
+        entity:
+          filter:
+            - integration: ceny_paliv
+              domain: event
+    max_distance:
+      name: Largest distance
+      description: Only stations at most this far from the centre of the place.
+      default: 5
+      selector:
+        number:
+          min: 0.5
+          max: 100
+          step: 0.5
+          unit_of_measurement: km
+          mode: box
+    max_price:
+      name: Price limit
+      description: Only prices up to this. 0 means any price.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.1
+          unit_of_measurement: Kč
+          mode: box
+    language:
+      name: Message language
+      default: en
+      selector:
+        select:
+          options:
+            - label: English
+              value: en
+            - label: Čeština
+              value: cs
+    actions:
+      name: Actions
+      description: >-
+        What to do, for example notify your phone with `{{ title }}` and `{{ message }}`. Also available:
+        `{{ station }}`, `{{ price }}`, `{{ distance }}`, `{{ unit }}` and `{{ maps }}` (a Google Maps link).
+      default:
+        - action: persistent_notification.create
+          data:
+            title: "{{ title }}"
+            message: "{{ message }}"
+      selector:
+        action: {}
+
+mode: queued
+max: 5
+
+triggers:
+  - trigger: state
+    entity_id: !input price_events
+    not_from: [unavailable]
+    not_to: [unavailable, unknown]
+
+variables:
+  max_distance: !input max_distance
+  max_price: !input max_price
+  language: !input language
+  event: "{{ trigger.to_state.attributes }}"
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ event.event_type == 'cheapest_cheaper'
+         and event.distance_km is number and event.distance_km <= max_distance | float(0)
+         and (max_price | float(0) == 0 or event.price | float(0) <= max_price | float(0)) }}
+
+actions:
+  - variables:
+      station: "{{ event.station }}"
+      price: "{{ event.price }}"
+      distance: "{{ event.distance_km }}"
+      unit: "{{ event.unit }}"
+      maps: "{{ event.maps }}"
+      title: >-
+        {% if language == 'cs' %}⛽ {{ event.fuel }}: levná stanice poblíž
+        {%- else %}⛽ {{ event.fuel }}: cheap station nearby{% endif %}
+      message: >-
+        {{ station }}: {{ '%.2f' | format(price | float) }} {{ unit }}
+        ({{ distance }} km{{ ' od středu' if language == 'cs' else ' from the centre' }})
+  - sequence: !input actions

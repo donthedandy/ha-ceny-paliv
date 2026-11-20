@@ -1,0 +1,78 @@
+blueprint:
+  name: Ceny paliv – price below my limit
+  description: >-
+    Tells you when the cheapest price of a fuel in your place drops under the limit you set, with the station that
+    has it. Česky: upozornění, když nejnižší cena paliva klesne pod váš limit.
+  domain: automation
+  author: Ceny paliv
+  source_url: https://github.com/donthedandy/ha-ceny-paliv/blob/main/blueprints/automation/ceny_paliv/price_below_limit.yaml
+  homeassistant:
+    min_version: "2025.3.0"
+  input:
+    cheapest_price:
+      name: Cheapest-price sensor
+      description: The fuel's "cheapest" sensor of the place, for example `sensor.ceny_paliv_n95_top5`.
+      selector:
+        entity:
+          filter:
+            - integration: ceny_paliv
+              domain: sensor
+    limit:
+      name: Limit
+      description: Notify when the cheapest price is below this.
+      default: 35
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 0.1
+          unit_of_measurement: Kč
+          mode: box
+    language:
+      name: Message language
+      default: en
+      selector:
+        select:
+          options:
+            - label: English
+              value: en
+            - label: Čeština
+              value: cs
+    actions:
+      name: Actions
+      description: >-
+        What to do, for example notify your phone with `{{ title }}` and `{{ message }}`. Also available:
+        `{{ station }}`, `{{ price }}`, `{{ unit }}` and `{{ maps }}` (a Google Maps link).
+      default:
+        - action: persistent_notification.create
+          data:
+            title: "{{ title }}"
+            message: "{{ message }}"
+      selector:
+        action: {}
+
+mode: single
+
+triggers:
+  - trigger: numeric_state
+    entity_id: !input cheapest_price
+    below: !input limit
+
+variables:
+  language: !input language
+  entity: !input cheapest_price
+
+actions:
+  - variables:
+      top: "{{ (state_attr(entity, 'stations') or [None])[0] }}"
+      station: "{{ top.title if top else '' }}"
+      price: "{{ trigger.to_state.state }}"
+      unit: "{{ state_attr(entity, 'unit_of_measurement') }}"
+      maps: "{{ top.maps if top else '' }}"
+      fuel: "{{ state_attr(entity, 'fuel_label') }}"
+      title: >-
+        {% if language == 'cs' %}⛽ {{ fuel }}: cena pod vaším limitem
+        {%- else %}⛽ {{ fuel }}: price under your limit{% endif %}
+      message: >-
+        {{ station }}: {{ '%.2f' | format(price | float) }} {{ unit }}
+  - sequence: !input actions
