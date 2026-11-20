@@ -60,6 +60,13 @@
         "data_description": {
           "name": "Zobrazí se v kartě a v názvech senzorů. Prázdné = souřadnice."
         }
+      },
+      "reauth_confirm": {
+        "title": "Znovu ověřit",
+        "description": "mBenzin.cz už nepřijímá přístupový klíč pro {title}. Zadejte nový osobní klíč (pokud ho nemáte, napište na reklama@mbenzin.cz).",
+        "data": {
+          "key": "Přístupový klíč"
+        }
       }
     },
     "error": {
@@ -70,7 +77,8 @@
     },
     "abort": {
       "already_configured": "Toto město je již nastaveno.",
-      "single_instance_allowed": "Integrace je již nastavena. Další město nebo bod přidáte u integrace tlačítkem „Přidat místo“."
+      "single_instance_allowed": "Integrace je již nastavena. Další město nebo bod přidáte u integrace tlačítkem „Přidat místo“.",
+      "reauth_successful": "Nový přístupový klíč funguje. Ceny se hned obnoví."
     }
   },
   "options": {
@@ -197,6 +205,44 @@
       "options": {
         "city": "Město ze seznamu",
         "point": "Kolem bodu (mapa a okruh)"
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_auth": {
+      "message": "mBenzin.cz nepřijímá přístupový klíč. Zadejte nový klíč."
+    },
+    "update_failed": {
+      "message": "Ceny se nepodařilo načíst z mBenzin.cz ({errors})."
+    },
+    "refresh_failed": {
+      "message": "Ceny se nepodařilo obnovit: {failed}."
+    },
+    "no_loaded_entries": {
+      "message": "Ceny paliv není načteno."
+    },
+    "entry_not_found": {
+      "message": "Žádná položka Ceny paliv s id {entry_id}."
+    },
+    "entry_not_loaded": {
+      "message": "{title} není načteno."
+    }
+  },
+  "issues": {
+    "no_data": {
+      "title": "Žádné nové ceny z mBenzin.cz",
+      "description": "{title}: žádné aktuální ceny pro {fuels} od {since}. Senzory jsou nedostupné, dokud mBenzin.cz znovu neodpoví. Zkontrolujte, že je [mBenzin.cz]({url}) dostupný a že váš přístupový klíč stále platí (pokud ho mBenzin odmítne, Home Assistant si řekne o nový)."
+    }
+  },
+  "services": {
+    "refresh": {
+      "name": "Obnovit ceny",
+      "description": "Načte ceny z mBenzin.cz hned. Data stažená před méně než 30 minutami se znovu nestahují.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Položka",
+          "description": "Položka Ceny paliv, která se má obnovit. Když je prázdné, všechny."
+        }
       }
     }
   }

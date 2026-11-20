@@ -60,6 +60,13 @@
         "data_description": {
           "name": "Shown in the card and in the names of the sensors. Leave empty for the coordinates."
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate",
+        "description": "mBenzin.cz no longer accepts the access key of {title}. Enter a new personal key (e-mail reklama@mbenzin.cz if you do not have one).",
+        "data": {
+          "key": "Access key"
+        }
       }
     },
     "error": {
@@ -70,7 +77,8 @@
     },
     "abort": {
       "already_configured": "This city is already configured.",
-      "single_instance_allowed": "The integration is already set up. To follow another town or point, open it and use \"Add place\"."
+      "single_instance_allowed": "The integration is already set up. To follow another town or point, open it and use \"Add place\".",
+      "reauth_successful": "The new access key works. The prices will refresh now."
     }
   },
   "options": {
@@ -197,6 +205,44 @@
       "options": {
         "city": "A town from the list",
         "point": "Around a point (map and radius)"
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_auth": {
+      "message": "mBenzin.cz does not accept the access key. Enter a new key."
+    },
+    "update_failed": {
+      "message": "The prices could not be loaded from mBenzin.cz ({errors})."
+    },
+    "refresh_failed": {
+      "message": "The prices could not be refreshed: {failed}."
+    },
+    "no_loaded_entries": {
+      "message": "Ceny paliv is not loaded."
+    },
+    "entry_not_found": {
+      "message": "No Ceny paliv entry with the id {entry_id}."
+    },
+    "entry_not_loaded": {
+      "message": "{title} is not loaded."
+    }
+  },
+  "issues": {
+    "no_data": {
+      "title": "No new prices from mBenzin.cz",
+      "description": "{title}: no fresh prices for {fuels} since {since}. The sensors are unavailable until mBenzin.cz answers again. Check that [mBenzin.cz]({url}) is reachable and that your access key is still valid (Home Assistant asks for a new one if it is refused)."
+    }
+  },
+  "services": {
+    "refresh": {
+      "name": "Refresh prices",
+      "description": "Loads the prices from mBenzin.cz now. Data downloaded less than 30 minutes ago is not downloaded again.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Entry",
+          "description": "The Ceny paliv entry to refresh. All entries when empty."
+        }
       }
     }
   }
