@@ -6,6 +6,7 @@
  *   fuel: n95            # n95 | benzinplus | diesel | dieselplus | lpg | cng | adblue
  *
  * Optional (all of them are also in the visual editor: Add card > Ceny paliv):
+ *   place: Praha          # which place, when you follow several (name of the place; default: the first one)
  *   show: [home, list, map, graph]   # which parts to draw; use several cards to place them freely
  *   layout: auto         # auto = 2 columns when the card is wide | columns | stack
  *   stations: 5          # 1-5 stations in the list
@@ -19,7 +20,7 @@
  *
  * Texts come from the language chosen in the integration setup (attribute `labels` of the top5 sensor).
  */
-const CARD_VERSION = '0.4.1';
+const CARD_VERSION = '0.5.0';
 
 const PARTS = ['home', 'list', 'map', 'graph'];
 
@@ -89,9 +90,10 @@ class CenyPalivCard extends HTMLElement {
     if (this._children) this._children.forEach((c) => { c.hass = hass; });
   }
 
-  // Find this fuel's sensors by their attributes, so the card does not depend on how Home Assistant names the
-  // entities (device name prefix, renamed entities, second city...). Older installs without the attributes are
-  // matched on the entity id suffix (..._<fuel>_top5, _home, _1 .. _5).
+  // Find this fuel's sensors of the chosen place by their attributes, so the card does not depend on how Home Assistant
+  // names the entities (device name prefix, renamed entities, second city...). `place` (config) is the name of the
+  // place; without it the first place is used. Older installs without the attributes are matched on the entity id
+  // suffix (..._<fuel>_top5, _home, _1 .. _5).
   _resolve(hass) {
     const c = this._ids;
     const valid = c && c.top5 && hass.states[c.top5] && (!c.home || hass.states[c.home]) && c.pos.every((id) => !id || hass.states[id]);
@@ -99,24 +101,30 @@ class CenyPalivCard extends HTMLElement {
     if (valid && (c.home || now - this._scanAt < 10000)) return c;
     this._scanAt = now;
     const fuel = this._config.fuel;
-    const ids = { top5: null, home: null, pos: [] };
+    const places = {};
     for (const id of Object.keys(hass.states)) {
       if (!id.startsWith('sensor.ceny_paliv_')) continue;
       const a = hass.states[id].attributes || {};
-      let role = null; let idx = 0;
+      let role = null; let idx = 0; let key = 'main'; let name = '';
       if (a.cp_fuel) {
         if (a.cp_fuel !== fuel) continue;
-        role = a.cp_role; idx = a.cp_index || 0;
+        role = a.cp_role; idx = a.cp_index || 0; key = a.cp_place || 'main'; name = a.cp_place_name || '';
       } else {
         const m = id.match(/_([a-z0-9]+)_(top5|home|[1-5])$/);
         if (!m || m[1] !== fuel) continue;
         role = m[2] === 'top5' ? 'top5' : m[2] === 'home' ? 'home' : 'position'; idx = /^\d$/.test(m[2]) ? Number(m[2]) : 0;
       }
-      if (role === 'top5') ids.top5 = id;
-      else if (role === 'home') ids.home = id;
-      else if (role === 'position' && idx >= 1 && idx <= 5) ids.pos[idx - 1] = id;
+      const p = places[key] || (places[key] = { name, top5: null, home: null, pos: [] });
+      if (name) p.name = name;
+      if (role === 'top5') p.top5 = id;
+      else if (role === 'home') p.home = id;
+      else if (role === 'position' && idx >= 1 && idx <= 5) p.pos[idx - 1] = id;
     }
-    return ids;
+    const want = norm(this._config.place);
+    const keys = Object.keys(places);
+    const pick = (want && keys.find((k) => norm(places[k].name) === want || norm(k) === want)) || (places.main ? 'main' : keys[0]);
+    const chosen = places[pick] || { top5: null, home: null, pos: [] };
+    return { top5: chosen.top5, home: chosen.home, pos: chosen.pos };
   }
 
   _sides() {
@@ -147,6 +155,18 @@ class CenyPalivCard extends HTMLElement {
       const a = st.attributes || {};
       const isTop = a.cp_role === 'top5' || (!a.cp_role && /_top5$/.test(id) && a.fuel);
       if (isTop && a.fuel && !out.some((o) => o.value === a.fuel)) out.push({ value: a.fuel, label: a.fuel_label || a.fuel });
+    }
+    return out;
+  }
+  // The places that have this fuel: [{ value: name, label: name }]
+  static places(hass, fuel) {
+    const out = [];
+    for (const [id, st] of Object.entries((hass && hass.states) || {})) {
+      if (!id.startsWith('sensor.ceny_paliv_')) continue;
+      const a = st.attributes || {};
+      if (a.cp_role === 'top5' && a.cp_fuel === fuel && a.cp_place_name && !out.some((o) => o.value === a.cp_place_name)) {
+        out.push({ value: a.cp_place_name, label: a.cp_place_name });
+      }
     }
     return out;
   }
@@ -403,8 +423,8 @@ class CenyPalivCard extends HTMLElement {
       return `<div class="row" data-maps="${esc(s.maps)}">
         ${this._avatar(s, i + 1, best)}
         <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
-          <span style="font-size:15px;font-weight:700;color:#eef0f3;${cp ? 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis' : ''}">${esc(name)}${cp ? ` <span style="font-size:11px;font-weight:500;color:#9aa1ad">${esc(addr)}</span>` : ''}${home}</span>
-          ${cp ? '' : `<span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(addr)} · ${when}</span>`}</div>
+          <span style="font-size:15px;font-weight:700;color:#eef0f3;${cp ? 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis' : ''}">${esc(name)}${cp ? ` <span style="font-size:11px;font-weight:500;color:#9aa1ad">${esc(addr)}${s.distance_km != null ? ' · ' + esc(s.distance_km) + ' km' : ''}</span>` : ''}${home}</span>
+          ${cp ? '' : `<span style="font-size:12px;color:#9aa1ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(addr)}${s.distance_km != null ? ' · ' + esc(s.distance_km) + ' km' : ''} · ${when}</span>`}</div>
         <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px" title="${esc(T('vs_yesterday'))}">
           <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
           <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
@@ -465,13 +485,13 @@ class CenyPalivCard extends HTMLElement {
 // ------------------------------------------------------------------ visual editor
 const EDITOR_TEXT = {
   en: {
-    fuel: 'Fuel', show: 'Parts to show', layout: 'Layout', stations: 'Stations in the list', compact: 'Compact', show_footer: 'Show update times and legend',
+    fuel: 'Fuel', place: 'Place', show: 'Parts to show', layout: 'Layout', stations: 'Stations in the list', compact: 'Compact', show_footer: 'Show update times and legend',
     map_height: 'Map height in px (0 = automatic)', logo_path: 'Folder of your own logos (leave empty for the logo pack)',
     home: 'My station', list: 'Cheapest stations', map: 'Map', graph: '30-day graph',
     auto: 'Automatic: 2 columns when the card is wide', columns: 'Always 2 columns', stack: 'Always 1 column',
   },
   cs: {
-    fuel: 'Palivo', show: 'Zobrazené části', layout: 'Rozvržení', stations: 'Počet stanic v seznamu', compact: 'Kompaktní', show_footer: 'Zobrazit časy aktualizace a legendu',
+    fuel: 'Palivo', place: 'Místo', show: 'Zobrazené části', layout: 'Rozvržení', stations: 'Počet stanic v seznamu', compact: 'Kompaktní', show_footer: 'Zobrazit časy aktualizace a legendu',
     map_height: 'Výška mapy v px (0 = automaticky)', logo_path: 'Složka s vlastními logy (prázdné = balíček log)',
     home: 'Moje stanice', list: 'Nejlevnější stanice', map: 'Mapa', graph: 'Graf za 30 dní',
     auto: 'Automaticky: 2 sloupce, je-li karta široká', columns: 'Vždy 2 sloupce', stack: 'Vždy 1 sloupec',
@@ -501,8 +521,10 @@ class CenyPalivCardEditor extends HTMLElement {
     const options = CenyPalivCard.fuels(this._hass);
     this._form.hass = this._hass;
     this._form.data = Object.assign({ show: PARTS, layout: 'auto', stations: 5, compact: false, show_footer: !this._config.compact, map_height: 0 }, this._config);
+    const places = CenyPalivCard.places(this._hass, this._config.fuel);
     this._form.schema = [
       { name: 'fuel', required: true, selector: { select: { options, mode: 'dropdown' } } },
+      ...(places.length > 1 ? [{ name: 'place', selector: { select: { options: places, mode: 'dropdown' } } }] : []),
       { name: 'show', selector: { select: { multiple: true, mode: 'list', options: PARTS.map((p) => ({ value: p, label: L[p] })) } } },
       { name: 'layout', selector: { select: { mode: 'dropdown', options: ['auto', 'columns', 'stack'].map((p) => ({ value: p, label: L[p] })) } } },
       { name: 'stations', selector: { number: { min: 1, max: 5, step: 1, mode: 'slider' } } },
