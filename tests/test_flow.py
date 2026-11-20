@@ -117,7 +117,7 @@ async def test_full_city_flow_and_sensors(hass, aioclient_mock):
     assert top.attributes["friendly_name"] == "Natural 95 · nejlevnější"
     home = hass.states.get("sensor.ceny_paliv_n95_home")
     assert home and float(home.state) == 36.9 and home.attributes["rank"] == 1
-    assert home.attributes["friendly_name"] == "Orlen – Bratri Stefanu 69"
+    assert home.attributes["friendly_name"] == "Orlen – Bratří Štefanů 69"
     assert hass.states.get("sensor.ceny_paliv_n95_1").attributes.get("latitude") is None   # favourite: own sensor
     p2 = hass.states.get("sensor.ceny_paliv_n95_2")
     assert p2.attributes["latitude"] and p2.attributes["friendly_name"].startswith("2 · ")
@@ -156,7 +156,7 @@ async def test_legacy_entry_keeps_ids_names_and_data(hass, aioclient_mock):
     assert top and float(top.state) == 36.9 and top.attributes["city_name"] == "Hradec Kralove"   # unchanged title
     assert top.attributes["friendly_name"] == "Natural 95 · cheapest"
     assert top.attributes["cp_place"] == "main"
-    assert hass.states.get("sensor.ceny_paliv_n95_home").attributes["friendly_name"] == "Orlen – Bratri Stefanu 69"
+    assert hass.states.get("sensor.ceny_paliv_n95_home").attributes["friendly_name"] == "Orlen – Bratří Štefanů 69"
     assert hass.states.get("sensor.ceny_paliv_n95_3").attributes["friendly_name"].startswith("3 · ")
     reg = er.async_get(hass)
     assert reg.async_get("sensor.ceny_paliv_n95_top5").unique_id == f"{entry.entry_id}_n95_top5"
@@ -196,6 +196,8 @@ async def test_switch_first_place_to_a_point_keeps_entities(hass, aioclient_mock
     await hass.async_block_till_done()
     o = await hass.config_entries.options.async_init(entry.entry_id)
     o = await hass.config_entries.options.async_configure(o["flow_id"], {"mode": "point"})
+    assert o["step_id"] == "source"
+    o = await hass.config_entries.options.async_configure(o["flow_id"], {"source": "map"})
     assert o["step_id"] == "point"
     o = await hass.config_entries.options.async_configure(
         o["flow_id"], {"location": {"latitude": 50.2104, "longitude": 15.8252, "radius": 4000}, "name": "Around HK"}
@@ -206,7 +208,9 @@ async def test_switch_first_place_to_a_point_keeps_entities(hass, aioclient_mock
     o = await hass.config_entries.options.async_configure(o["flow_id"], {"logos": []})
     assert o["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
-    assert entry.data == {"key": "GOODKEY", "mode": "point", "latitude": 50.2104, "longitude": 15.8252, "radius": 4.0, "name": "Around HK"}
+    assert entry.data == {
+        "key": "GOODKEY", "mode": "point", "source": "map", "latitude": 50.2104, "longitude": 15.8252, "radius": 4.0, "name": "Around HK",
+    }
     top = hass.states.get("sensor.ceny_paliv_n95_top5")
     assert top.attributes["city_name"] == "Around HK" and top.attributes["stations"][0]["distance_km"] <= 4.0
     assert hass.states.get("sensor.ceny_paliv_n95_home") is not None
@@ -217,6 +221,9 @@ async def test_point_mode_setup(hass, aioclient_mock):
     mock_site(aioclient_mock)
     r = await start(hass)
     r = await step(hass, r, mode="point")
+    assert r["step_id"] == "source"
+    assert [k for k in r["data_schema"].schema if k == "source"][0].default() == "map"
+    r = await step(hass, r, source="map")
     assert r["step_id"] == "point"
     default = [k for k in r["data_schema"].schema if k == "location"][0].default()
     assert default["radius"] == 10000.0 and default["latitude"] == hass.config.latitude   # Home Assistant's location
@@ -255,6 +262,8 @@ async def add_place(hass, entry, **place):
     if place["mode"] == "city":
         r = await hass.config_entries.subentries.async_configure(r["flow_id"], {"city": place["city"]})
     else:
+        assert r["step_id"] == "source"
+        r = await hass.config_entries.subentries.async_configure(r["flow_id"], {"source": "map"})
         r = await hass.config_entries.subentries.async_configure(r["flow_id"], {"location": place["location"], "name": place.get("name", "")})
     assert r["step_id"] == "fuels" and "language" not in r["data_schema"].schema    # language is the entry's
     r = await hass.config_entries.subentries.async_configure(r["flow_id"], {"fuels": place["fuels"]})
@@ -382,7 +391,7 @@ async def test_readme_markdown_example(hass, aioclient_mock):
     await setup_city(hass)
     out = Template(MARKDOWN_TEMPLATE, hass).async_render()
     lines = [line for line in out.splitlines() if line.strip()]
-    assert len(lines) == 5 and lines[0].startswith("1. **Orlen** – Bratri Stefanu 69:") and "google.com/maps" in lines[0]
+    assert len(lines) == 5 and lines[0].startswith("1. **Orlen** – Bratří Štefanů 69:") and "google.com/maps" in lines[0]
     assert Template("{% for s in (state_attr('sensor.nope', 'stations') or []) %}x{% endfor %}", hass).async_render() == ""
 
 
