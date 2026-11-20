@@ -17,11 +17,14 @@ Integrace pro HACS, která v Home Assistantu ukazuje ceny paliv z [mBenzin.cz](h
 ## Co umí
 
 - Vyberete si **město** (nebo **bod na mapě s okruhem**), **jedno či více paliv** (třeba Natural 95 a LPG pro vůz na dvě paliva) a pro každé palivo **oblíbenou stanici**.
+- Místo lze také **vystředit na domov v Home Assistantu, na zónu nebo na osobu či zařízení, které se s vámi pohybuje** (oblast ho následuje, bez dalšího požadavku na mBenzin).
 - Pro každé palivo **5 nejlevnějších stanic ve městě** (jen z vašeho města, nikoli z celého kraje), odkaz na Google Maps a **mapu s cenami**.
+- **Průměrné ceny** v celé republice, ve vašem kraji a ve vaší oblasti a jak si vaše oblast oproti nim stojí.
+- **Události o změně ceny** a tři hotové **blueprinty** pro automatizace: oblíbená stanice zlevní, cena klesne pod váš limit, levná stanice poblíž.
 - U oblíbené stanice: aktuální cena, **trendy oproti 1, 2, 7, 14 a 30 dnům**, pořadí ve městě a dlouhodobá statistika (graf za 30 dní).
 - Hotová **karta pro dashboard** (`ceny-paliv-card`) přímo v integraci – přidáte ji z nabídky karet, bez kopírování YAML – s volbou jazyka **čeština / angličtina**. Je **přizpůsobitelná**: na širokém dashboardu dva sloupce, v telefonu jeden, kompaktní verze a každou část (oblíbená stanice, seznam, mapa, graf) lze umístit jako samostatnou kartu.
 - Volitelná **loga čerpacích stanic** (Orlen, MOL, Shell, Tesco…): zaškrtnete řetězce při nastavení a stáhnou se za vás. Řetězce bez loga dostanou barevný odznak s iniciálami.
-- Zastaralé ceny se skrývají: u benzínu a nafty cena starší než včerejšek, u CNG starší než 3 dny, u LPG a AdBlue starší než 7 dní.
+- Zastaralé ceny se skrývají: u benzínu a nafty cena starší než včerejšek, u CNG starší než 3 dny, u LPG a AdBlue starší než 7 dní. Malé stanice aktualizují zřídka: volba **Zobrazit i starší ceny** (až 3 nebo 7 dní) je ponechá v seznamu s uvedeným datem ceny.
 
 ## 1. Získání přístupového klíče (zdarma)
 
@@ -62,8 +65,16 @@ Pro každé palivo `<palivo>` (`n95`, `benzinplus`, `diesel`, `dieselplus`, `lpg
 | `sensor.ceny_paliv_<palivo>_top5` | cena nejlevnější stanice; v atributech je všech 5 stanic (název, adresa, cena, souřadnice, odkaz na Google Maps, trendy…) a texty ve zvoleném jazyce |
 | `sensor.ceny_paliv_<palivo>_home` | cena u vaší oblíbené stanice (jen pokud jste nějakou vybrali), trendy, pořadí, statistika |
 | `sensor.ceny_paliv_<palivo>_1` … `_5` | 5 nejlevnějších stanic se zeměpisnou šířkou a délkou pro kartu mapy |
+| `sensor.ceny_paliv_<palivo>_national_average` | průměrná cena aktuálních stanic v České republice; v atributech 14 krajů |
+| `sensor.ceny_paliv_<palivo>_region_average` | průměrná cena v kraji vašeho místa; nedostupný, když střed místa leží mimo Českou republiku |
+| `sensor.ceny_paliv_<palivo>_area_average` | průměrná cena stanic vašeho místa, s `vs_national` a `vs_region` (Kč, pod nulou = levnější) |
+| `event.ceny_paliv_<palivo>_price_change` | vyvolá `favourite_cheaper`, `favourite_dearer` a `cheapest_cheaper` (se stanicí, cenou, předchozí cenou, změnou, vzdáleností a odkazem na mapu) |
 
-Senzory se jmenují podle stanice, kterou právě ukazují (např. `1 · Orlen – Bratri Stefanu 69`); identifikátory entit se nemění. Ceny se obnovují každých 6 hodin. Pokud se aktualizace nepovede (třeba kvůli chybě 429), zůstanou zachována poslední data a atribut `fetch_error` uvede důvod.
+Tři senzory průměrů počítají jen aktuální stanice (stejný věkový limit jako seznam, včetně **Zobrazit i starší ceny**) a uchovávají dlouhodobé statistiky. Kraj stanice se určí z jejích souřadnic a z hranic krajů dodaných s integrací (ČÚZK, otevřená data CC BY 4.0, zjednodušená: stanice do asi 200 m od hranice kraje se může započítat sousednímu kraji). Vše se počítá ze stejného stažení jako zbytek: bez dalšího požadavku na mBenzin.
+
+Cenová historie oblíbené stanice se zapisuje také do **dlouhodobých statistik** Home Assistantu, podle samotné stanice (`ceny_paliv:<palivo>_<stanice>`), takže historie pokračuje, když stanici vyberete znovu, v jiném místě nebo po odebrání a opětovném přidání integrace.
+
+Senzory se jmenují podle stanice, kterou právě ukazují (např. `1 · Orlen – Bratří Štefanů 69`); identifikátory entit se nemění. Ceny se obnovují každých 6 hodin. Pokud se aktualizace nepovede (třeba kvůli chybě 429), zůstanou zachována poslední data a atribut `fetch_error` uvede důvod.
 
 ## Další místa (volitelné)
 
@@ -84,6 +95,7 @@ Na stránce integrace přidá tlačítko **Přidat místo** další město nebo 
 *Snímky obrazovky jsou z anglického rozhraní Home Assistantu; texty se řídí jazykem vašeho HA.*
 
 - **Jaký druh místa?** *Město* sleduje stanice, které mBenzin řadí pod název města. mBenzin některá města dělí na čtvrtě (Plzeň má `Plzen`, `Plzen---Koterov`, …) a několik stanic řadí pod špatné město. Pokud je seznam města neúplný, použijte *Kolem bodu*: zahrnou se všechny stanice uvnitř kruhu bez ohledu na název města.
+- **Kde je bod?** Bod lze zvolit **na mapě** (nebo zadat souřadnicemi), být vaším **domovem v Home Assistantu**, **zónou**, nebo **osobou či zařízením** (například aplikací Home Assistant v telefonu). Sledování osoby nebo zařízení přesune oblast, jakmile je asi 1 km od posledního středu, z již stažených cen: bez dalšího požadavku na mBenzin. Když je poloha neznámá, oblast zůstane doma; když osoba nebo zóna přestane existovat, upozorní vás **Opravy**.
 - **Už máte nainstalováno?** Samo se nic nezmění: vaše současné místo si ponechá senzory, názvy i historii cen. Chcete-li ho sledovat jako bod, otevřete **Konfigurovat** a zvolte *Kolem bodu*: senzory zůstanou se stejnými identifikátory a historie se zachová, jen znovu vyberete oblíbenou stanici.
 - Senzory prvního místa mají dál identifikátory `sensor.ceny_paliv_<palivo>_…`; u dalších míst je to `sensor.ceny_paliv_<místo>_<palivo>_…` a jejich názvy končí názvem místa.
 
@@ -95,6 +107,18 @@ Na stránce integrace přidá tlačítko **Přidat místo** další město nebo 
 - **Obnovit hned:** akce `ceny_paliv.refresh` načte ceny okamžitě (volitelně jen pro jednu položku: `config_entry_id`). Data stažená před méně než 30 minutami se znovu nestahují, takže mBenzin nezahltíte.
 - **Diagnostika:** *Stáhnout diagnostiku* u integrace poskytne nastavení a stav posledního obnovení, bez vašeho klíče a bez míst či oblíbených stanic, které prozradí, kde bydlíte.
 - Každé místo má vlastní **zařízení** (senzory jsou pod ním seskupeny); odebrání paliva odebere jeho senzory a odebraná oblíbená stanice zůstane jako vypnutý diagnostický senzor, aby se neztratila historie. Poškozené záznamy v datech mBenzinu se přeskočí a obnovení nezastaví.
+
+## Automatizace: události a blueprinty
+
+Každé místo a palivo má entitu události `event.ceny_paliv_<palivo>_price_change`. Vyvolá se, když oblíbená stanice zlevní nebo zdraží (`favourite_cheaper`, `favourite_dearer`) a když klesne nejnižší cena místa (`cheapest_cheaper`). První ceny po restartu jsou jen výchozí stav: restart sám změnu nikdy nenahlásí. Používají ji tři blueprinty (importují se jedním kliknutím, pak z nich vytvoříte automatizaci):
+
+| Blueprint | Co dělá | |
+|---|---|---|
+| **Změna ceny oblíbené stanice** | upozorní, když vaše stanice zlevní (nebo zdraží), s minimální změnou | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fdonthedandy%2Fha-ceny-paliv%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fceny_paliv%2Ffavourite_price_change.yaml) |
+| **Cena pod mým limitem** | upozorní, když nejnižší cena paliva klesne pod váš limit | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fdonthedandy%2Fha-ceny-paliv%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fceny_paliv%2Fprice_below_limit.yaml) |
+| **Levná stanice poblíž** | pro místo, které sleduje osobu nebo zařízení: nová nejnižší cena v zadané vzdálenosti | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fdonthedandy%2Fha-ceny-paliv%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fceny_paliv%2Fcheap_station_nearby.yaml) |
+
+Texty upozornění jsou anglicky nebo česky a **akci** si zvolíte sami (oznámení v telefonu, hlasová zpráva…); k dispozici jsou `{{ title }}`, `{{ message }}`, `{{ station }}`, `{{ price }}`, `{{ unit }}` a `{{ maps }}`.
 
 ## 3. Karta pro dashboard (je součástí, nic dalšího se neinstaluje)
 
@@ -165,7 +189,7 @@ Loga jsou ochranné známky svých majitelů a slouží jen k označení stanic;
 
 ## 5. Bez karty: standardní karty
 
-Každý senzor se jmenuje podle toho, co právě ukazuje (např. `1 · Orlen – Bratri Stefanu 69`), takže stanici zobrazí jakákoli standardní karta, bez šablony. Názvy sledují pořadí a mění se při každé aktualizaci; identifikátory entit se nemění.
+Každý senzor se jmenuje podle toho, co právě ukazuje (např. `1 · Orlen – Bratří Štefanů 69`), takže stanici zobrazí jakákoli standardní karta, bez šablony. Názvy sledují pořadí a mění se při každé aktualizaci; identifikátory entit se nemění.
 
 Karta **Entity** s 5 nejlevnějšími stanicemi (stav senzoru je cena):
 
@@ -210,7 +234,7 @@ Nápady i hlasy jsou vítány: otevřete issue nebo přidejte 👍 u té, kterou
 
 ## Poděkování
 
-Práce na spolehlivosti ve verzi 0.6 (čekání po HTTP 429, žádost o nový klíč, diagnostika, Opravy, akce obnovení) byla inspirována [forkem Vituhlose](https://github.com/Vituhlos/ha-ceny-paliv) tohoto projektu, rovněž pod licencí MIT. Děkuji!
+Práce na spolehlivosti ve verzi 0.6 (čekání po HTTP 429, žádost o nový klíč, diagnostika, Opravy, akce obnovení) a funkce verze 0.7 (zdroje polohy, průměrné ceny, události o změně ceny a blueprinty) byly inspirovány [forkem Vituhlose](https://github.com/Vituhlos/ha-ceny-paliv) tohoto projektu, rovněž pod licencí MIT. Hranice krajů (`regions.json`, `script/build_regions.py`) pocházejí také z tohoto forku; samotná data jsou otevřená data ČÚZK (RÚIAN), CC BY 4.0, zjednodušená. Děkuji!
 
 ## Licence
 

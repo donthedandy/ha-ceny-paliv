@@ -18,11 +18,14 @@ A HACS integration that shows the cheapest stations of **your city** for the fue
 
 - Pick your **city** (or **a point on the map with a radius**), one or **several fuels** (e.g. Natural 95 + LPG for a dual-fuel car) and a **favourite station per fuel**
 - Follow **as many places as you like** (home, the city you drive to, a holiday area…): one key, an **Add place** button, one card per place
+- A place can also be **centred on your Home Assistant home, on a zone, or on a person or device that moves with you** (the area follows them, with no extra request to mBenzin)
 - Per fuel: the **top 5 cheapest** stations in the city (only that city, not the region), with a Google Maps link, and a **map**
+- **Average prices** of the country, of your region (kraj) and of your area, and how your area stands against them
+- **Price-change events** and three ready-made **automation blueprints**: your favourite station gets cheaper, a price drops under your limit, a cheap station near you
 - Favourite station: price, **trends vs 1/2/7/14/30 days ago**, rank in town, long-term statistics (the 30-day graph)
 - A ready-made **dashboard card** (`ceny-paliv-card`) shipped with the integration — add it from the card picker, no YAML to copy — in **English or Czech** (your choice during setup). It is **flexible**: two columns on a wide dashboard, one on a phone, a compact version, and every part (favourite station, list, map, graph) can be placed as its own card
 - Optional **station logos** (Orlen, MOL, Shell, Tesco…): tick the chains you want in the setup and they are downloaded for you. Chains without a logo get a colour badge with their initials
-- Stale prices are hidden (older than yesterday for petrol/diesel, 3 days for CNG, 7 days for LPG/AdBlue)
+- Stale prices are hidden (older than yesterday for petrol/diesel, 3 days for CNG, 7 days for LPG/AdBlue). Small stations update rarely: the setting **Show older prices too** (up to 3 or 7 days) keeps them in the list with the price date shown
 
 ## 1. Get your access key (free)
 
@@ -57,8 +60,16 @@ For each fuel `<fuel>` (`n95`, `benzinplus`, `diesel`, `dieselplus`, `lpg`, `cng
 | `sensor.ceny_paliv_<fuel>_top5` | price of the cheapest station; attributes: the 5 stations (name, address, price, coordinates, Google Maps link, trends…) |
 | `sensor.ceny_paliv_<fuel>_home` | price at your favourite station (only if you chose one); trends, rank, statistics |
 | `sensor.ceny_paliv_<fuel>_1` … `_5` | the 5 cheapest stations, with latitude/longitude for the map card |
+| `sensor.ceny_paliv_<fuel>_national_average` | average price of the up-to-date stations in the Czech Republic; the 14 regions in the attributes |
+| `sensor.ceny_paliv_<fuel>_region_average` | average price in the region (kraj) of your place; unavailable when the centre of the place is outside the Czech Republic |
+| `sensor.ceny_paliv_<fuel>_area_average` | average price of the stations of your place, with `vs_national` and `vs_region` (Kč, below zero = cheaper) |
+| `event.ceny_paliv_<fuel>_price_change` | fires `favourite_cheaper`, `favourite_dearer` and `cheapest_cheaper` (with the station, the price, the previous price, the change, the distance and a map link) |
 
-The sensors are named after the station they currently show (for example `1 · Orlen – Bratri Stefanu 69`); the entity ids never change. Prices refresh every 6 hours. If a refresh fails (for example HTTP 429) the last data is kept and the attribute `fetch_error` says why.
+The three average sensors count only the up-to-date stations (the same age limit as the list, including **Show older prices too**) and keep long-term statistics. A station's region comes from its coordinates and the region boundaries shipped with the integration (ČÚZK, open data CC BY 4.0, simplified: a station within about 200 m of a regional border may count for the neighbouring region). Everything is computed from the same download as the rest: no extra request to mBenzin.
+
+Your favourite station's price history also goes to Home Assistant's **long-term statistics**, keyed by the station itself (`ceny_paliv:<fuel>_<station>`), so the history goes on when you choose the station again, in another place, or after removing and adding the integration.
+
+The sensors are named after the station they currently show (for example `1 · Orlen – Bratří Štefanů 69`); the entity ids never change. Prices refresh every 6 hours. If a refresh fails (for example HTTP 429) the last data is kept and the attribute `fetch_error` says why.
 
 ## More places (optional)
 
@@ -77,6 +88,7 @@ On the integration page, the **Add place** button adds another town or point wit
 </p>
 
 - **Which kind of place?** A *town* follows the stations that mBenzin files under that town name. Some towns are split by mBenzin into districts (Plzeň has `Plzen`, `Plzen---Koterov`, …), and a few stations are filed under the wrong town. If the list of a town looks incomplete, use *Around a point* instead: every station inside the circle is included, whatever the town name.
+- **Where is the point?** A point can be picked **on the map** (or typed as coordinates), be your **Home Assistant home**, a **zone**, or a **person or device** (for example the Home Assistant app on your phone). Following a person or device moves the area once they are about 1 km away from the last centre, from the prices already downloaded: no extra request to mBenzin. If their location is unknown the area waits at home; if the person or zone does not exist any more a **Repairs** notice says so.
 - **Already installed?** Nothing changes by itself: your current place keeps its sensors, its names and its price history. To follow your current place as a point, open **Configure** and choose *Around a point*: the sensors keep their ids and the history stays, you only pick your favourite station again.
 - Sensors of the first place keep the ids `sensor.ceny_paliv_<fuel>_…`; the ones of the other places are `sensor.ceny_paliv_<place>_<fuel>_…` and their names end with the name of the place.
 
@@ -88,6 +100,18 @@ On the integration page, the **Add place** button adds another town or point wit
 - **Refresh now:** the action `ceny_paliv.refresh` loads the prices immediately (optionally for one entry: `config_entry_id`). Data downloaded less than 30 minutes ago is not downloaded again, so it cannot flood mBenzin.
 - **Diagnostics:** *Download diagnostics* on the integration gives the settings and the state of the last refresh, without your key and without the places or favourite stations that point to where you live.
 - Each place has its own **device** (the sensors are grouped under it); removing a fuel removes its sensors, and a favourite you remove is kept as a disabled diagnostic sensor so its history is not lost. Malformed entries in mBenzin's data are skipped instead of stopping the refresh.
+
+## Automations: events and blueprints
+
+Each place and fuel has an event entity `event.ceny_paliv_<fuel>_price_change`. It fires when your favourite station gets cheaper or dearer (`favourite_cheaper`, `favourite_dearer`) and when the cheapest price of the place drops (`cheapest_cheaper`). The first prices after a restart are only the baseline: a restart never reports a change by itself. Three blueprints use it (import them with one click, then create an automation from them):
+
+| Blueprint | What it does | |
+|---|---|---|
+| **Favourite station price change** | notifies when your station gets cheaper (or dearer), with a minimum change | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fdonthedandy%2Fha-ceny-paliv%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fceny_paliv%2Ffavourite_price_change.yaml) |
+| **Price below my limit** | notifies when the cheapest price of a fuel drops under your limit | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fdonthedandy%2Fha-ceny-paliv%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fceny_paliv%2Fprice_below_limit.yaml) |
+| **Cheap station near me** | for a place that follows a person or device: a new cheapest price within the distance you choose | [![Import](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fdonthedandy%2Fha-ceny-paliv%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fceny_paliv%2Fcheap_station_nearby.yaml) |
+
+The notification texts are English or Czech and the **action** is yours to choose (a phone notification, a voice message…), with `{{ title }}`, `{{ message }}`, `{{ station }}`, `{{ price }}`, `{{ unit }}` and `{{ maps }}` available.
 
 ## 3. The dashboard card (included, nothing else to install)
 
@@ -158,7 +182,7 @@ The logos are trademarks of their owners, used only to identify the stations; th
 
 ## 5. Without the card: standard cards
 
-Every sensor is named after what it currently shows (for example `1 · Orlen – Bratri Stefanu 69`), so any standard card displays the station without a template. The names follow the ranking and update at each refresh; the entity ids never change.
+Every sensor is named after what it currently shows (for example `1 · Orlen – Bratří Štefanů 69`), so any standard card displays the station without a template. The names follow the ranking and update at each refresh; the entity ids never change.
 
 An **Entities** card with the 5 cheapest stations (the sensor state is the price):
 
@@ -207,7 +231,7 @@ Ideas and votes are welcome: open an issue or add a 👍 to the one you want.
 
 ## Credits
 
-The reliability work of 0.6 (waiting after HTTP 429, asking for a new key, diagnostics, Repairs, the refresh action) was inspired by [Vituhlos's fork](https://github.com/Vituhlos/ha-ceny-paliv) of this project, also MIT licensed. Thank you!
+The reliability work of 0.6 (waiting after HTTP 429, asking for a new key, diagnostics, Repairs, the refresh action) and the features of 0.7 (location sources, average prices, price-change events and blueprints) were inspired by [Vituhlos's fork](https://github.com/Vituhlos/ha-ceny-paliv) of this project, also MIT licensed. The region boundaries (`regions.json`, `script/build_regions.py`) come from that fork too; the data itself is open data of ČÚZK (RÚIAN), CC BY 4.0, simplified. Thank you!
 
 ## License
 
