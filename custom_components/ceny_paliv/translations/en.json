@@ -12,10 +12,10 @@
         }
       },
       "city": {
-        "title": "City",
-        "description": "Choose your city. Only the stations of this city are shown, not those of the whole region.",
+        "title": "Town",
+        "description": "Choose the town. Only the stations of this town are shown, not those of the whole region.",
         "data": {
-          "city": "City"
+          "city": "Town"
         }
       },
       "fuels": {
@@ -31,7 +31,7 @@
       },
       "station": {
         "title": "Favourite station – {fuel}",
-        "description": "Your usual station in {city} for {fuel}. It gets its own sensor with price history, trends and its rank in town. Leave \"—\" for none.",
+        "description": "Your usual station in {city} for {fuel}. It gets its own sensor with price history, trends and its rank. Leave \"—\" for none.",
         "data": {
           "station": "Favourite station"
         }
@@ -42,6 +42,24 @@
         "data": {
           "logos": "Logos"
         }
+      },
+      "mode": {
+        "title": "Kind of place",
+        "description": "Follow a **town** of the mBenzin list, or **a point on the map with a radius** (for example around your home, or a town that mBenzin splits into districts). The top 5 and the map cover the stations of that place.",
+        "data": {
+          "mode": "Kind of place"
+        }
+      },
+      "point": {
+        "title": "Point and radius",
+        "description": "Move the marker on the map and set the radius: every station inside the circle is included. The default is your Home Assistant location and 10 km.",
+        "data": {
+          "location": "Point and radius",
+          "name": "Name (optional)"
+        },
+        "data_description": {
+          "name": "Shown in the card and in the names of the sensors. Leave empty for the coordinates."
+        }
       }
     },
     "error": {
@@ -51,7 +69,8 @@
       "no_fuel": "Pick at least one fuel."
     },
     "abort": {
-      "already_configured": "This city is already configured."
+      "already_configured": "This city is already configured.",
+      "single_instance_allowed": "The integration is already set up. To follow another town or point, open it and use \"Add place\"."
     }
   },
   "options": {
@@ -69,7 +88,7 @@
       },
       "station": {
         "title": "Favourite station – {fuel}",
-        "description": "Your usual station in {city} for {fuel}. Leave \"—\" for none.",
+        "description": "Your usual station in {city} for {fuel}. It gets its own sensor with price history, trends and its rank. Leave \"—\" for none.",
         "data": {
           "station": "Favourite station"
         }
@@ -80,6 +99,31 @@
         "data": {
           "logos": "Logos"
         }
+      },
+      "mode": {
+        "title": "Kind of place",
+        "description": "Follow a **town** of the mBenzin list, or **a point on the map with a radius** (for example around your home, or a town that mBenzin splits into districts). The top 5 and the map cover the stations of that place.",
+        "data": {
+          "mode": "Kind of place"
+        }
+      },
+      "city": {
+        "title": "Town",
+        "description": "Choose the town. Only the stations of this town are shown, not those of the whole region.",
+        "data": {
+          "city": "Town"
+        }
+      },
+      "point": {
+        "title": "Point and radius",
+        "description": "Move the marker on the map and set the radius: every station inside the circle is included. The default is your Home Assistant location and 10 km.",
+        "data": {
+          "location": "Point and radius",
+          "name": "Name (optional)"
+        },
+        "data_description": {
+          "name": "Shown in the card and in the names of the sensors. Leave empty for the coordinates."
+        }
       }
     },
     "error": {
@@ -87,6 +131,73 @@
       "cannot_connect": "Cannot reach mBenzin.cz. Please try again.",
       "rate_limited": "mBenzin returned HTTP 429 (limit: 20 pages per hour). Try again in a moment.",
       "no_fuel": "Pick at least one fuel."
+    }
+  },
+  "config_subentries": {
+    "place": {
+      "initiate_flow": {
+        "user": "Add place",
+        "reconfigure": "Add place"
+      },
+      "entry_type": "Place",
+      "step": {
+        "mode": {
+          "title": "Kind of place",
+          "description": "Follow a **town** of the mBenzin list, or **a point on the map with a radius** (for example around your home, or a town that mBenzin splits into districts). The top 5 and the map cover the stations of that place.",
+          "data": {
+            "mode": "Kind of place"
+          }
+        },
+        "city": {
+          "title": "Town",
+          "description": "Choose the town. Only the stations of this town are shown, not those of the whole region.",
+          "data": {
+            "city": "Town"
+          }
+        },
+        "point": {
+          "title": "Point and radius",
+          "description": "Move the marker on the map and set the radius: every station inside the circle is included. The default is your Home Assistant location and 10 km.",
+          "data": {
+            "location": "Point and radius",
+            "name": "Name (optional)"
+          },
+          "data_description": {
+            "name": "Shown in the card and in the names of the sensors. Leave empty for the coordinates."
+          }
+        },
+        "fuels": {
+          "title": "Fuels",
+          "description": "Pick one or more fuels – for example Natural 95 and LPG for a dual-fuel car. Each fuel gets its own sensors. Note that mBenzin does not distinguish E10: the Natural 95 price applies to all 95-octane petrol.",
+          "data": {
+            "fuels": "Fuels"
+          }
+        },
+        "station": {
+          "title": "Favourite station – {fuel}",
+          "description": "Your usual station in {city} for {fuel}. It gets its own sensor with price history, trends and its rank. Leave \"—\" for none.",
+          "data": {
+            "station": "Favourite station"
+          }
+        }
+      },
+      "error": {
+        "invalid_auth": "mBenzin did not accept the key. Check that it is pasted whole and without spaces.",
+        "cannot_connect": "Cannot reach mBenzin.cz. Please try again.",
+        "rate_limited": "mBenzin returned HTTP 429 (limit: 20 pages per hour). Try again in a moment.",
+        "no_fuel": "Pick at least one fuel."
+      },
+      "abort": {
+        "reconfigure_successful": "The place was updated."
+      }
+    }
+  },
+  "selector": {
+    "mode": {
+      "options": {
+        "city": "A town from the list",
+        "point": "Around a point (map and radius)"
+      }
     }
   }
 }

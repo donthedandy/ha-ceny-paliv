@@ -13,25 +13,25 @@
       },
       "city": {
         "title": "Město",
-        "description": "Vyberte město. Zobrazí se pouze čerpací stanice z tohoto města, nikoli z celého kraje.",
+        "description": "Vyberte město. Zobrazí se jen stanice tohoto města, nikoli celého kraje.",
         "data": {
           "city": "Město"
         }
       },
       "fuels": {
         "title": "Paliva a jazyk",
-        "description": "Vyberte jedno nebo více paliv – například Natural 95 a LPG pro vůz na dvě paliva. Pro každé palivo se vytvoří samostatné senzory. Nezapomeňte, že mBenzin nerozlišuje benzín E10, cena Natural 95 platí pro všechny 95oktanové benzíny.",
+        "description": "Vyberte jedno nebo více paliv – například Natural 95 a LPG pro vůz na dvě paliva. Každé palivo má vlastní senzory. mBenzin nerozlišuje E10: cena Natural 95 platí pro všechny 95oktanové benzíny.",
         "data": {
           "fuels": "Paliva",
           "language": "Jazyk textů v dashboardu"
         },
         "data_description": {
-          "language": "Určuje jazyk popisků v hotových pohledech dashboardu (např. „Moje stanice“). Jazyk samotného nastavení se řídí jazykem Home Assistantu."
+          "language": "Určuje jazyk popisků v hotových pohledech dashboardu (například „Moje stanice“). Jazyk tohoto nastavení se řídí jazykem Home Assistantu."
         }
       },
       "station": {
         "title": "Oblíbená stanice – {fuel}",
-        "description": "Vaše nejčastější čerpací stanice v městě {city} pro palivo {fuel}. Dostane vlastní senzor s historií cen, trendy a pořadím ve městě. Pokud žádnou nechcete, ponechte „—“.",
+        "description": "Vaše obvyklá stanice v místě {city} pro {fuel}. Dostane vlastní senzor s historií cen, trendy a pořadím. „—“ = žádná.",
         "data": {
           "station": "Oblíbená stanice"
         }
@@ -41,6 +41,24 @@
         "description": "Zaškrtněte řetězce, jejichž loga chcete mít v kartě. Stáhnou se z balíčku log Ceny paliv na GitHubu do konfigurační složky Home Assistantu (každé má jen pár KB). Řetězce z vašeho města jsou předvybrané. Loga jsou ochranné známky svých majitelů a slouží jen k označení stanic; projekt s nimi nijak nesouvisí. Pokud nezaškrtnete nic, karta použije barevné odznaky s iniciálami.",
         "data": {
           "logos": "Loga"
+        }
+      },
+      "mode": {
+        "title": "Druh místa",
+        "description": "Sledujte **město** ze seznamu mBenzin, nebo **bod na mapě s okruhem** (třeba kolem domova, nebo město, které mBenzin dělí na čtvrtě). Top 5 a mapa zahrnují stanice tohoto místa.",
+        "data": {
+          "mode": "Druh místa"
+        }
+      },
+      "point": {
+        "title": "Bod a okruh",
+        "description": "Přesuňte značku na mapě a nastavte okruh: zahrnou se všechny stanice uvnitř kruhu. Výchozí je poloha vašeho Home Assistantu a 10 km.",
+        "data": {
+          "location": "Bod a okruh",
+          "name": "Název (volitelné)"
+        },
+        "data_description": {
+          "name": "Zobrazí se v kartě a v názvech senzorů. Prázdné = souřadnice."
         }
       }
     },
@@ -51,25 +69,26 @@
       "no_fuel": "Vyberte alespoň jedno palivo."
     },
     "abort": {
-      "already_configured": "Toto město je již nastaveno."
+      "already_configured": "Toto město je již nastaveno.",
+      "single_instance_allowed": "Integrace je již nastavena. Další město nebo bod přidáte u integrace tlačítkem „Přidat místo“."
     }
   },
   "options": {
     "step": {
       "fuels": {
         "title": "Paliva a jazyk",
-        "description": "Vyberte jedno nebo více paliv – například Natural 95 a LPG pro vůz na dvě paliva. Pro každé palivo se vytvoří samostatné senzory. Nezapomeňte, že mBenzin nerozlišuje benzín E10, cena Natural 95 platí pro všechny 95oktanové benzíny.",
+        "description": "Vyberte jedno nebo více paliv – například Natural 95 a LPG pro vůz na dvě paliva. Každé palivo má vlastní senzory. mBenzin nerozlišuje E10: cena Natural 95 platí pro všechny 95oktanové benzíny.",
         "data": {
           "fuels": "Paliva",
           "language": "Jazyk textů v dashboardu"
         },
         "data_description": {
-          "language": "Určuje jazyk popisků v hotových pohledech dashboardu (např. „Moje stanice“). Jazyk samotného nastavení se řídí jazykem Home Assistantu."
+          "language": "Určuje jazyk popisků v hotových pohledech dashboardu (například „Moje stanice“). Jazyk tohoto nastavení se řídí jazykem Home Assistantu."
         }
       },
       "station": {
         "title": "Oblíbená stanice – {fuel}",
-        "description": "Vaše nejčastější čerpací stanice v městě {city} pro palivo {fuel}. Pokud žádnou nechcete, ponechte „—“.",
+        "description": "Vaše obvyklá stanice v místě {city} pro {fuel}. Dostane vlastní senzor s historií cen, trendy a pořadím. „—“ = žádná.",
         "data": {
           "station": "Oblíbená stanice"
         }
@@ -80,6 +99,31 @@
         "data": {
           "logos": "Loga"
         }
+      },
+      "mode": {
+        "title": "Druh místa",
+        "description": "Sledujte **město** ze seznamu mBenzin, nebo **bod na mapě s okruhem** (třeba kolem domova, nebo město, které mBenzin dělí na čtvrtě). Top 5 a mapa zahrnují stanice tohoto místa.",
+        "data": {
+          "mode": "Druh místa"
+        }
+      },
+      "city": {
+        "title": "Město",
+        "description": "Vyberte město. Zobrazí se jen stanice tohoto města, nikoli celého kraje.",
+        "data": {
+          "city": "Město"
+        }
+      },
+      "point": {
+        "title": "Bod a okruh",
+        "description": "Přesuňte značku na mapě a nastavte okruh: zahrnou se všechny stanice uvnitř kruhu. Výchozí je poloha vašeho Home Assistantu a 10 km.",
+        "data": {
+          "location": "Bod a okruh",
+          "name": "Název (volitelné)"
+        },
+        "data_description": {
+          "name": "Zobrazí se v kartě a v názvech senzorů. Prázdné = souřadnice."
+        }
       }
     },
     "error": {
@@ -87,6 +131,73 @@
       "cannot_connect": "Nepodařilo se spojit s mBenzin.cz. Zkuste to prosím znovu.",
       "rate_limited": "mBenzin vrátil chybu 429 (limit je 20 stránek za hodinu). Zkuste to za chvíli.",
       "no_fuel": "Vyberte alespoň jedno palivo."
+    }
+  },
+  "config_subentries": {
+    "place": {
+      "initiate_flow": {
+        "user": "Přidat místo",
+        "reconfigure": "Přidat místo"
+      },
+      "entry_type": "Místo",
+      "step": {
+        "mode": {
+          "title": "Druh místa",
+          "description": "Sledujte **město** ze seznamu mBenzin, nebo **bod na mapě s okruhem** (třeba kolem domova, nebo město, které mBenzin dělí na čtvrtě). Top 5 a mapa zahrnují stanice tohoto místa.",
+          "data": {
+            "mode": "Druh místa"
+          }
+        },
+        "city": {
+          "title": "Město",
+          "description": "Vyberte město. Zobrazí se jen stanice tohoto města, nikoli celého kraje.",
+          "data": {
+            "city": "Město"
+          }
+        },
+        "point": {
+          "title": "Bod a okruh",
+          "description": "Přesuňte značku na mapě a nastavte okruh: zahrnou se všechny stanice uvnitř kruhu. Výchozí je poloha vašeho Home Assistantu a 10 km.",
+          "data": {
+            "location": "Bod a okruh",
+            "name": "Název (volitelné)"
+          },
+          "data_description": {
+            "name": "Zobrazí se v kartě a v názvech senzorů. Prázdné = souřadnice."
+          }
+        },
+        "fuels": {
+          "title": "Paliva",
+          "description": "Vyberte jedno nebo více paliv – například Natural 95 a LPG pro vůz na dvě paliva. Každé palivo má vlastní senzory. mBenzin nerozlišuje E10: cena Natural 95 platí pro všechny 95oktanové benzíny.",
+          "data": {
+            "fuels": "Paliva"
+          }
+        },
+        "station": {
+          "title": "Oblíbená stanice – {fuel}",
+          "description": "Vaše obvyklá stanice v místě {city} pro {fuel}. Dostane vlastní senzor s historií cen, trendy a pořadím. „—“ = žádná.",
+          "data": {
+            "station": "Oblíbená stanice"
+          }
+        }
+      },
+      "error": {
+        "invalid_auth": "mBenzin klíč nepřijal. Zkontrolujte, že je zkopírovaný celý a bez mezer.",
+        "cannot_connect": "Nepodařilo se spojit s mBenzin.cz. Zkuste to prosím znovu.",
+        "rate_limited": "mBenzin vrátil chybu 429 (limit je 20 stránek za hodinu). Zkuste to za chvíli.",
+        "no_fuel": "Vyberte alespoň jedno palivo."
+      },
+      "abort": {
+        "reconfigure_successful": "Místo bylo upraveno."
+      }
+    }
+  },
+  "selector": {
+    "mode": {
+      "options": {
+        "city": "Město ze seznamu",
+        "point": "Kolem bodu (mapa a okruh)"
+      }
     }
   }
 }
