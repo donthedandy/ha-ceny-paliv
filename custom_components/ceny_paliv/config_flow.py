@@ -6,6 +6,7 @@ exactly as in the versions before places existed.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
@@ -358,6 +359,28 @@ class CenyPalivConfigFlow(_PlaceSteps, ConfigFlow, domain=DOMAIN):
             {vol.Required(CONF_KEY): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))}
         )
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
+
+    async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> ConfigFlowResult:
+        """mBenzin refused the key: ask for a new one instead of failing forever."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        entry = self._get_reauth_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            key = user_input[CONF_KEY].strip()
+            try:
+                await async_fetch_markers(async_get_clientsession(self.hass), key, "n95")
+            except MBenzinError as err:
+                errors["base"] = _error_key(err)
+            else:
+                return self.async_update_reload_and_abort(entry, data_updates={CONF_KEY: key})
+        schema = vol.Schema(
+            {vol.Required(CONF_KEY): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))}
+        )
+        return self.async_show_form(
+            step_id="reauth_confirm", data_schema=schema, errors=errors, description_placeholders={"title": entry.title}
+        )
 
     async def _async_finish(self) -> ConfigFlowResult:
         st = self._state()

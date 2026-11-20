@@ -6,7 +6,7 @@ from datetime import timedelta
 DOMAIN = "ceny_paliv"
 
 CARD_URL = "/ceny_paliv_static/ceny-paliv-card.js"
-CARD_VERSION = "0.5.0"
+CARD_VERSION = "0.6.0"
 
 # Optional station logos (pack in the GitHub repository, downloaded on request, see logos.py)
 LOGO_URL = "/ceny_paliv_static/logos"  # served from <config>/ceny_paliv_logos/
@@ -34,7 +34,16 @@ DEFAULT_RADIUS_KM = 10
 
 NONE_VALUE = "__none__"
 
-URL = "https://www.mbenzin.cz/Mapa-cen/data?fuel={fuel}&ccs=0&klic={key}"
+URL_BASE = "https://www.mbenzin.cz/Mapa-cen/data"
+# Where the personal key travels: in the query string (klic=...) as mBenzin documents, or in a header, which keeps it
+# out of URLs and logs. Only switch after checking that mBenzin accepts the header.
+KEY_IN_HEADER = False
+KEY_HEADER = "X-Mbenzin-Klic"
+MAX_RETRY_AFTER = timedelta(hours=24)  # a broken Retry-After header must not block the key for longer
+SOURCE_URL = "https://www.mbenzin.cz"
+ATTRIBUTION = "Ceny: mbenzin.cz"
+STALE_DATA_AFTER = timedelta(hours=24)  # no successful refresh for this long: sensors unavailable + Repairs issue
+FORCED_REFRESH_MIN_AGE = timedelta(minutes=30)  # the refresh action never downloads data newer than this
 USER_AGENT = "HomeAssistant-ceny-paliv"
 
 # fuel code -> (label, unit)

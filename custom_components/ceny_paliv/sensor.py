@@ -13,14 +13,17 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from homeassistant.util import slugify
 
 from .api import MAIN_PLACE, Place, station_title
-from .const import FUELS, TOP
+from .const import ATTRIBUTION, DOMAIN, FUELS, SOURCE_URL, TOP
 from .coordinator import CenyPalivConfigEntry, CenyPalivCoordinator
 
 TOP_ATTRIBUTES = (
@@ -46,6 +49,7 @@ HOME_ATTRIBUTES = ("updated", "updated_date", "age_days", "rank", "fresh_count",
 
 async def async_setup_entry(hass: HomeAssistant, entry: CenyPalivConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
+    per_place: list[tuple[Place, list[CenyPalivEntity]]] = []
     for place in coordinator.places:
         entities: list[CenyPalivEntity] = []
         for fuel in place.fuels:
@@ -53,16 +57,44 @@ async def async_setup_entry(hass: HomeAssistant, entry: CenyPalivConfigEntry, as
             if place.homes.get(fuel):
                 entities.append(CenyPalivHomeSensor(coordinator, entry, place, fuel))
             entities.extend(CenyPalivPositionSensor(coordinator, entry, place, fuel, i) for i in range(TOP))
+        per_place.append((place, entities))
+    # before the entities are added: a favourite sensor that comes back must not be added while still disabled
+    _tidy_registry(hass, entry, {e.unique_id for _, entities in per_place for e in entities if e.unique_id})
+    for place, entities in per_place:
         if place.key == MAIN_PLACE:
             async_add_entities(entities)
         else:
             async_add_entities(entities, config_subentry_id=place.key)
 
 
+def _tidy_registry(hass: HomeAssistant, entry: CenyPalivConfigEntry, wanted: set[str]) -> None:
+    """Keep the entity registry in line with the settings.
+
+    The sensors of a fuel that was removed are deleted. The favourite sensor of a fuel that is still followed but no
+    longer has a favourite is kept for its history, as a disabled diagnostic entity; it comes back when a favourite
+    is chosen again.
+    """
+    registry = er.async_get(hass)
+    for reg in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if reg.platform != DOMAIN or not reg.unique_id:
+            continue
+        if reg.unique_id in wanted:
+            if reg.unique_id.endswith("_home") and reg.disabled_by is er.RegistryEntryDisabler.INTEGRATION:
+                registry.async_update_entity(reg.entity_id, disabled_by=None, entity_category=None)
+            continue
+        if reg.unique_id.endswith("_home") and reg.unique_id[: -len("_home")] + "_top5" in wanted:
+            registry.async_update_entity(
+                reg.entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION, entity_category=EntityCategory.DIAGNOSTIC
+            )
+        else:
+            registry.async_remove(reg.entity_id)
+
+
 class CenyPalivEntity(CoordinatorEntity[CenyPalivCoordinator], SensorEntity):
     """Base: one fuel of one city."""
 
     _attr_has_entity_name = False  # keeps the entity ids predictable: sensor.ceny_paliv_<fuel>_...
+    _attr_attribution = ATTRIBUTION  # mBenzin asks for the source to be shown with its prices
 
     def __init__(
         self, coordinator: CenyPalivCoordinator, entry: CenyPalivConfigEntry, place: Place, fuel: str, suffix: str
@@ -79,8 +111,21 @@ class CenyPalivEntity(CoordinatorEntity[CenyPalivCoordinator], SensorEntity):
             self.entity_id = f"sensor.ceny_paliv_{slugify(place.title)}_{fuel}_{suffix}"
         self._attr_name = f"Ceny paliv {fuel} {suffix}"
         self._attr_native_unit_of_measurement = FUELS.get(fuel, (fuel, "Kč/l"))[1]
-        # No device on purpose: with a device, Home Assistant puts the device name in front of every entity name
-        # ("Ceny paliv Hradec Kralove 1 · Orlen – ..."), which hides the station in narrow cards.
+        # One device per place. Entity names do not use the device name (has_entity_name is False), so the station
+        # stays visible in narrow cards.
+        device_id = entry.entry_id if place.key == MAIN_PLACE else f"{entry.entry_id}_{place.key}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, device_id)},
+            name=f"Ceny paliv {place.title}",
+            entry_type=DeviceEntryType.SERVICE,
+            manufacturer="mBenzin.cz",
+            configuration_url=SOURCE_URL,
+        )
+
+    @property
+    def available(self) -> bool:
+        """Unavailable when the fuel has had no fresh prices for a day (a short outage keeps the last prices)."""
+        return super().available and self._fuel not in self.coordinator.stale_fuels
 
     @property
     def _payload(self) -> dict[str, Any]:

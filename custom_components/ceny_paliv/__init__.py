@@ -8,11 +8,14 @@ from aiohttp import web
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
-from .const import CARD_URL, CARD_VERSION, LOGO_URL
-from .coordinator import CenyPalivConfigEntry, CenyPalivCoordinator
+from .const import CARD_URL, CARD_VERSION, DOMAIN, LOGO_URL
+from .coordinator import CenyPalivConfigEntry, CenyPalivCoordinator, no_data_issue_id
 from .logos import ID_RE, logo_dir
+from .services import async_setup_services
 
 PLATFORMS = ["sensor"]
 
@@ -55,6 +58,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.http.register_view(CenyPalivCardView(card))
     hass.http.register_view(CenyPalivLogoView(hass))
     add_extra_js_url(hass, f"{CARD_URL}?v={CARD_VERSION}")
+    async_setup_services(hass)
     return True
 
 
@@ -74,3 +78,9 @@ async def _async_reload(hass: HomeAssistant, entry: CenyPalivConfigEntry) -> Non
 
 async def async_unload_entry(hass: HomeAssistant, entry: CenyPalivConfigEntry) -> bool:
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: CenyPalivConfigEntry) -> None:
+    """The entry is deleted: its price history and its Repairs issue go with it."""
+    await Store(hass, 1, f"{DOMAIN}.{entry.entry_id}").async_remove()
+    ir.async_delete_issue(hass, DOMAIN, no_data_issue_id(entry.entry_id))

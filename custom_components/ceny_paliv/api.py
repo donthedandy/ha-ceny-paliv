@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import email.utils
 import math
 import re
 import unicodedata
@@ -16,14 +17,17 @@ from .const import (
     FLAT,
     FUELS,
     HISTORY_DAYS,
+    KEY_HEADER,
+    KEY_IN_HEADER,
     LABELS,
     MAPS,
+    MAX_RETRY_AFTER,
     MAX_AGE_DAYS_BY_FUEL,
     MAX_AGE_DAYS_DEFAULT,
     PERIODS,
     TOP,
     UPDATE_INTERVAL,
-    URL,
+    URL_BASE,
     USER_AGENT,
 )
 
@@ -37,24 +41,79 @@ class CannotConnect(MBenzinError):
 
 
 class InvalidAuth(MBenzinError):
-    """The access key is missing, wrong or not accepted."""
+    """The access key is missing, wrong or not accepted.
+
+    `definite` is True for an explicit 401/403. An HTML "browser check" page or an answer without markers also
+    means "key not accepted", but it can be an outage page too, so it only counts once it repeats.
+    """
+
+    def __init__(self, *args: object, definite: bool = False) -> None:
+        super().__init__(*args)
+        self.definite = definite
 
 
 class RateLimited(MBenzinError):
-    """HTTP 429: more than 20 pages per hour."""
+    """HTTP 429: more than 20 pages per hour. `retry_after` is the delay mBenzin asked for, in seconds, if any."""
+
+    def __init__(self, retry_after: float | None = None) -> None:
+        super().__init__(retry_after)
+        self.retry_after = retry_after
+
+
+def retry_after_seconds(value: str | None, now: dt.datetime | None = None) -> float | None:
+    """The delay of a `Retry-After` header in seconds (0 to 24 hours), or None when it is missing or invalid.
+
+    Both forms are read: a number of seconds, and an HTTP date.
+    """
+    if not value:
+        return None
+    value = value.strip()
+    limit = MAX_RETRY_AFTER.total_seconds()
+    if value.isdecimal():
+        return min(float(int(value)), limit)
+    try:
+        at = email.utils.parsedate_to_datetime(value)
+    except (TypeError, ValueError, IndexError):
+        return None
+    if at.tzinfo is None:
+        at = at.replace(tzinfo=dt.timezone.utc)
+    current = (now or dt.datetime.now(dt.timezone.utc)).astimezone(dt.timezone.utc)
+    return min(max(0.0, (at - current).total_seconds()), limit)
+
+
+def usable_marker(marker: Any) -> bool:
+    """A marker with everything the integration reads. A malformed one is skipped, it must not stop the refresh."""
+    if not isinstance(marker, dict):
+        return False
+    url, name = marker.get("url"), marker.get("name")
+    if not isinstance(url, str) or not url.startswith("/") or not isinstance(name, str):
+        return False
+    for name_ in ("price", "lat", "lng"):
+        value = marker.get(name_)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+            return False
+    return True
 
 
 async def async_fetch_markers(session: aiohttp.ClientSession, key: str, fuel: str) -> list[dict[str, Any]]:
-    """Download the price-map markers of one fuel (all of the Czech Republic)."""
-    url = URL.format(fuel=fuel, key=key)
+    """Download the price-map markers of one fuel (all of the Czech Republic).
+
+    Raises RateLimited (429), InvalidAuth (401/403, or an answer that is not a price map) and CannotConnect.
+    """
+    params = {"fuel": fuel, "ccs": "0"}
+    headers = {"User-Agent": USER_AGENT}
+    if KEY_IN_HEADER:
+        headers[KEY_HEADER] = key
+    else:
+        params["klic"] = key
     try:
         async with session.get(
-            url, headers={"User-Agent": USER_AGENT}, timeout=aiohttp.ClientTimeout(total=60)
+            URL_BASE, params=params, headers=headers, timeout=aiohttp.ClientTimeout(total=60)
         ) as resp:
             if resp.status == 429:
-                raise RateLimited
+                raise RateLimited(retry_after_seconds(resp.headers.get("Retry-After")))
             if resp.status in (401, 403):
-                raise InvalidAuth
+                raise InvalidAuth(definite=True)
             if resp.status != 200:
                 raise CannotConnect(f"HTTP {resp.status}")
             try:
@@ -62,11 +121,13 @@ async def async_fetch_markers(session: aiohttp.ClientSession, key: str, fuel: st
             except ValueError as err:  # an HTML "browser check" page = key not accepted
                 raise InvalidAuth from err
     except (aiohttp.ClientError, TimeoutError) as err:
-        raise CannotConnect(type(err).__name__) from err
+        raise CannotConnect(type(err).__name__) from None  # never chain: the exception text can hold the URL
+    except ValueError:  # aiohttp refuses a header value with control characters: not a usable key
+        raise InvalidAuth(definite=True) from None
     markers = data.get("markers") if isinstance(data, dict) else None
     if not isinstance(markers, list):
         raise InvalidAuth
-    return markers
+    return [m for m in markers if usable_marker(m)]
 
 
 MODE_CITY = "city"
@@ -112,7 +173,23 @@ def city_of(marker: dict[str, Any]) -> str | None:
 
 
 def station_slug(marker: dict[str, Any]) -> str:
-    return marker["url"].split("/")[3]
+    """The station part of the URL (/Ceny-benzinu-a-nafty/<City>/<Station>/<id>). A few stations have no town in
+    mBenzin's URL (/stanice/<id>): they are identified by that id instead of crashing."""
+    parts = marker["url"].split("/")
+    return parts[3] if len(parts) > 3 and parts[3] else parts[-1] or str(marker.get("id", ""))
+
+
+def address_of(marker: dict[str, Any]) -> str:
+    """The readable address: the station slug with spaces, or the `addr` text when the URL has no station part."""
+    parts = marker["url"].split("/")
+    if len(parts) > 3 and parts[3]:
+        return pretty(parts[3])
+    return _bounded(marker.get("addr") or marker["name"])
+
+
+def _bounded(value: Any, limit: int = 120) -> str:
+    """Text from mBenzin with a length limit, so an odd value cannot bloat the entity attributes."""
+    return str(value)[:limit]
 
 
 def pretty(slug: str) -> str:
@@ -165,7 +242,7 @@ def station_options(markers: list[dict[str, Any]], place: Place) -> list[dict[st
     out = []
     for m in markers_in_place(markers, place):
         slug = station_slug(m)
-        out.append({"value": slug, "label": station_title(m["name"], pretty(slug))})
+        out.append({"value": slug, "label": station_title(_bounded(m["name"]), address_of(m))})
     return sorted(out, key=lambda o: o["label"].casefold())
 
 
@@ -237,10 +314,10 @@ def build_payload(
         log = history.get(slug, [])
         out = {
             "rank": rank,
-            "name": m["name"],
-            "chain": m.get("chain") or m["name"],
-            "address": pretty(slug),
-            "street": street_of(m["name"], pretty(slug)),
+            "name": _bounded(m["name"]),
+            "chain": _bounded(m.get("chain") or m["name"]),
+            "address": address_of(m),
+            "street": street_of(_bounded(m["name"]), address_of(m)),
             "price": m["price"],
             "lat": m["lat"],
             "lng": m["lng"],
