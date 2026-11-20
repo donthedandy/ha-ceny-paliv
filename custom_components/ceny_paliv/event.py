@@ -65,7 +65,7 @@ class CenyPalivPriceChangeEvent(CenyPalivBaseEntity, EventEntity):
 
     @property
     def name(self) -> str:
-        return f"{self._label} · {self._word('name_events', 'price change')}{self._where}"
+        return f"{self._label} · {self._word('name_events', 'price change')}"
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()

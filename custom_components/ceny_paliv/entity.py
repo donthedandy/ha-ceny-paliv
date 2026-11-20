@@ -15,7 +15,7 @@ from .coordinator import CenyPalivConfigEntry, CenyPalivCoordinator
 class CenyPalivBaseEntity(CoordinatorEntity[CenyPalivCoordinator]):
     """Shared by the sensors and the event entities."""
 
-    _attr_has_entity_name = False  # keeps the entity ids predictable: sensor.ceny_paliv_<fuel>_...
+    _attr_has_entity_name = True  # the friendly name is "<place> <entity name>" (recent HA versions always add the device)
     _attr_attribution = ATTRIBUTION  # mBenzin asks for the source to be shown with its prices
     _entity_domain = "sensor"
 
@@ -33,12 +33,12 @@ class CenyPalivBaseEntity(CoordinatorEntity[CenyPalivCoordinator]):
             self._attr_unique_id = f"{entry.entry_id}_{place.key}_{fuel}_{suffix}"
             self.entity_id = f"{self._entity_domain}.ceny_paliv_{slugify(place.title)}_{fuel}_{suffix}"
         self._attr_native_unit_of_measurement = FUELS.get(fuel, (fuel, "Kč/l"))[1]
-        # One device per place. Entity names do not use the device name (has_entity_name is False), so the station
-        # stays visible in narrow cards.
+        # One device per place, named after the place; the friendly names read "<place> <entity name>".
         device_id = entry.entry_id if place.key == MAIN_PLACE else f"{entry.entry_id}_{place.key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, device_id)},
-            name=f"Ceny paliv {place.title}",
+            name=place.title,
+            model="Ceny paliv",
             entry_type=DeviceEntryType.SERVICE,
             manufacturer="mBenzin.cz",
             configuration_url=SOURCE_URL,
@@ -52,13 +52,6 @@ class CenyPalivBaseEntity(CoordinatorEntity[CenyPalivCoordinator]):
     @property
     def _payload(self) -> dict[str, Any]:
         return ((self.coordinator.data or {}).get(self._place.key) or {}).get(self._fuel) or {}
-
-    @property
-    def _where(self) -> str:
-        """' · <place>' once there are several places, so the names stay distinct (the first place keeps its names)."""
-        if self._place.key == MAIN_PLACE or len(self.coordinator.places) < 2:
-            return ""
-        return f" · {self._place.title}"
 
     @property
     def _label(self) -> str:

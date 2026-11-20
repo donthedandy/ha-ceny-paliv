@@ -106,7 +106,7 @@ class CenyPalivTop5Sensor(CenyPalivEntity):
 
     @property
     def name(self) -> str:
-        return f"{self._label} · {self._word('name_cheapest', 'cheapest')}{self._where}"
+        return f"{self._label} · {self._word('name_cheapest', 'cheapest')}"
 
     @property
     def native_value(self) -> float | None:
@@ -133,8 +133,8 @@ class CenyPalivHomeSensor(CenyPalivEntity):
     def name(self) -> str:
         home = self._payload.get("home")
         if home:
-            return station_title(home["name"], home["address"]) + self._where
-        return f"{self._label} · {self._word('name_home', 'favourite station')}{self._where}"
+            return station_title(home["name"], home["address"])
+        return f"{self._label} · {self._word('name_home', 'favourite station')}"
 
     @property
     def _home(self) -> dict[str, Any] | None:
@@ -170,8 +170,8 @@ class CenyPalivPositionSensor(CenyPalivEntity):
     def name(self) -> str:
         s = self._station
         if s:
-            return f"{self._index + 1} · {station_title(s['name'], s['address'])}{self._where}"
-        return f"{self._label} · {self._index + 1}{self._where}"
+            return f"{self._index + 1} · {station_title(s['name'], s['address'])}"
+        return f"{self._label} · {self._index + 1}"
 
     @property
     def _station(self) -> dict[str, Any] | None:
@@ -234,7 +234,7 @@ class CenyPalivAverageSensor(CenyPalivEntity):
             "region_average": self._word("avg_region", "average · region"),
             "area_average": self._word("avg_area", "average · area"),
         }[self._kind]
-        return f"{self._label} · {word}{self._where}"
+        return f"{self._label} · {word}"
 
     @property
     def available(self) -> bool:
