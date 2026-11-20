@@ -23,10 +23,12 @@
         "description": "Vyberte jedno nebo více paliv – například Natural 95 a LPG pro vůz na dvě paliva. Každé palivo má vlastní senzory. mBenzin nerozlišuje E10: cena Natural 95 platí pro všechny 95oktanové benzíny.",
         "data": {
           "fuels": "Paliva",
-          "language": "Jazyk textů v dashboardu"
+          "language": "Jazyk textů v dashboardu",
+          "max_age_days": "Zobrazit i starší ceny"
         },
         "data_description": {
-          "language": "Určuje jazyk popisků v hotových pohledech dashboardu (například „Moje stanice“). Jazyk tohoto nastavení se řídí jazykem Home Assistantu."
+          "language": "Určuje jazyk popisků v hotových pohledech dashboardu (například „Moje stanice“). Jazyk tohoto nastavení se řídí jazykem Home Assistantu.",
+          "max_age_days": "Malé stanice aktualizují ceny jen zřídka. Ponechte v seznamu i ty, jejichž cena je stará až 3 nebo 7 dní, s uvedeným datem."
         }
       },
       "station": {
@@ -67,6 +69,51 @@
         "data": {
           "key": "Přístupový klíč"
         }
+      },
+      "source": {
+        "title": "Kde je bod?",
+        "description": "Vyberte střed místa: bod na mapě, domov v Home Assistantu, osobu nebo zařízení, které se pohybuje (oblast ho následuje), nebo zónu.",
+        "data": {
+          "source": "Střed"
+        }
+      },
+      "point_home": {
+        "title": "Kolem domova",
+        "description": "Zahrnou se všechny stanice v okruhu od polohy domova v Home Assistantu.",
+        "data": {
+          "radius": "Poloměr",
+          "name": "Název (volitelné)"
+        },
+        "data_description": {
+          "radius": "V kilometrech, 1 až 100.",
+          "name": "Zobrazí se v kartě a v názvech senzorů. Když zůstane prázdné, použije se výchozí název."
+        }
+      },
+      "point_person": {
+        "title": "Kolem osoby nebo zařízení",
+        "description": "Oblast se pohybuje s osobou nebo zařízením (například aplikací Home Assistant v telefonu), jakmile je asi 1 km od posledního středu, z již stažených cen: bez dalšího požadavku na mBenzin. Když je poloha neznámá, oblast zůstane doma.",
+        "data": {
+          "entity": "Osoba nebo zařízení",
+          "radius": "Poloměr",
+          "name": "Název (volitelné)"
+        },
+        "data_description": {
+          "radius": "V kilometrech, 1 až 100.",
+          "name": "Zobrazí se v kartě a v názvech senzorů. Když zůstane prázdné, použije se výchozí název."
+        }
+      },
+      "point_zone": {
+        "title": "Kolem zóny",
+        "description": "Středem oblasti je střed zóny. Když zónu přesunete, oblast ji následuje.",
+        "data": {
+          "entity": "Zóna",
+          "radius": "Poloměr",
+          "name": "Název (volitelné)"
+        },
+        "data_description": {
+          "radius": "V kilometrech, 1 až 100.",
+          "name": "Zobrazí se v kartě a v názvech senzorů. Když zůstane prázdné, použije se výchozí název."
+        }
       }
     },
     "error": {
@@ -88,10 +135,12 @@
         "description": "Vyberte jedno nebo více paliv – například Natural 95 a LPG pro vůz na dvě paliva. Každé palivo má vlastní senzory. mBenzin nerozlišuje E10: cena Natural 95 platí pro všechny 95oktanové benzíny.",
         "data": {
           "fuels": "Paliva",
-          "language": "Jazyk textů v dashboardu"
+          "language": "Jazyk textů v dashboardu",
+          "max_age_days": "Zobrazit i starší ceny"
         },
         "data_description": {
-          "language": "Určuje jazyk popisků v hotových pohledech dashboardu (například „Moje stanice“). Jazyk tohoto nastavení se řídí jazykem Home Assistantu."
+          "language": "Určuje jazyk popisků v hotových pohledech dashboardu (například „Moje stanice“). Jazyk tohoto nastavení se řídí jazykem Home Assistantu.",
+          "max_age_days": "Malé stanice aktualizují ceny jen zřídka. Ponechte v seznamu i ty, jejichž cena je stará až 3 nebo 7 dní, s uvedeným datem."
         }
       },
       "station": {
@@ -131,6 +180,51 @@
         },
         "data_description": {
           "name": "Zobrazí se v kartě a v názvech senzorů. Prázdné = souřadnice."
+        }
+      },
+      "source": {
+        "title": "Kde je bod?",
+        "description": "Vyberte střed místa: bod na mapě, domov v Home Assistantu, osobu nebo zařízení, které se pohybuje (oblast ho následuje), nebo zónu.",
+        "data": {
+          "source": "Střed"
+        }
+      },
+      "point_home": {
+        "title": "Kolem domova",
+        "description": "Zahrnou se všechny stanice v okruhu od polohy domova v Home Assistantu.",
+        "data": {
+          "radius": "Poloměr",
+          "name": "Název (volitelné)"
+        },
+        "data_description": {
+          "radius": "V kilometrech, 1 až 100.",
+          "name": "Zobrazí se v kartě a v názvech senzorů. Když zůstane prázdné, použije se výchozí název."
+        }
+      },
+      "point_person": {
+        "title": "Kolem osoby nebo zařízení",
+        "description": "Oblast se pohybuje s osobou nebo zařízením (například aplikací Home Assistant v telefonu), jakmile je asi 1 km od posledního středu, z již stažených cen: bez dalšího požadavku na mBenzin. Když je poloha neznámá, oblast zůstane doma.",
+        "data": {
+          "entity": "Osoba nebo zařízení",
+          "radius": "Poloměr",
+          "name": "Název (volitelné)"
+        },
+        "data_description": {
+          "radius": "V kilometrech, 1 až 100.",
+          "name": "Zobrazí se v kartě a v názvech senzorů. Když zůstane prázdné, použije se výchozí název."
+        }
+      },
+      "point_zone": {
+        "title": "Kolem zóny",
+        "description": "Středem oblasti je střed zóny. Když zónu přesunete, oblast ji následuje.",
+        "data": {
+          "entity": "Zóna",
+          "radius": "Poloměr",
+          "name": "Název (volitelné)"
+        },
+        "data_description": {
+          "radius": "V kilometrech, 1 až 100.",
+          "name": "Zobrazí se v kartě a v názvech senzorů. Když zůstane prázdné, použije se výchozí název."
         }
       }
     },
@@ -178,7 +272,11 @@
           "title": "Paliva",
           "description": "Vyberte jedno nebo více paliv – například Natural 95 a LPG pro vůz na dvě paliva. Každé palivo má vlastní senzory. mBenzin nerozlišuje E10: cena Natural 95 platí pro všechny 95oktanové benzíny.",
           "data": {
-            "fuels": "Paliva"
+            "fuels": "Paliva",
+            "max_age_days": "Zobrazit i starší ceny"
+          },
+          "data_description": {
+            "max_age_days": "Malé stanice aktualizují ceny jen zřídka. Ponechte v seznamu i ty, jejichž cena je stará až 3 nebo 7 dní, s uvedeným datem."
           }
         },
         "station": {
@@ -186,6 +284,51 @@
           "description": "Vaše obvyklá stanice v místě {city} pro {fuel}. Dostane vlastní senzor s historií cen, trendy a pořadím. „—“ = žádná.",
           "data": {
             "station": "Oblíbená stanice"
+          }
+        },
+        "source": {
+          "title": "Kde je bod?",
+          "description": "Vyberte střed místa: bod na mapě, domov v Home Assistantu, osobu nebo zařízení, které se pohybuje (oblast ho následuje), nebo zónu.",
+          "data": {
+            "source": "Střed"
+          }
+        },
+        "point_home": {
+          "title": "Kolem domova",
+          "description": "Zahrnou se všechny stanice v okruhu od polohy domova v Home Assistantu.",
+          "data": {
+            "radius": "Poloměr",
+            "name": "Název (volitelné)"
+          },
+          "data_description": {
+            "radius": "V kilometrech, 1 až 100.",
+            "name": "Zobrazí se v kartě a v názvech senzorů. Když zůstane prázdné, použije se výchozí název."
+          }
+        },
+        "point_person": {
+          "title": "Kolem osoby nebo zařízení",
+          "description": "Oblast se pohybuje s osobou nebo zařízením (například aplikací Home Assistant v telefonu), jakmile je asi 1 km od posledního středu, z již stažených cen: bez dalšího požadavku na mBenzin. Když je poloha neznámá, oblast zůstane doma.",
+          "data": {
+            "entity": "Osoba nebo zařízení",
+            "radius": "Poloměr",
+            "name": "Název (volitelné)"
+          },
+          "data_description": {
+            "radius": "V kilometrech, 1 až 100.",
+            "name": "Zobrazí se v kartě a v názvech senzorů. Když zůstane prázdné, použije se výchozí název."
+          }
+        },
+        "point_zone": {
+          "title": "Kolem zóny",
+          "description": "Středem oblasti je střed zóny. Když zónu přesunete, oblast ji následuje.",
+          "data": {
+            "entity": "Zóna",
+            "radius": "Poloměr",
+            "name": "Název (volitelné)"
+          },
+          "data_description": {
+            "radius": "V kilometrech, 1 až 100.",
+            "name": "Zobrazí se v kartě a v názvech senzorů. Když zůstane prázdné, použije se výchozí název."
           }
         }
       },
@@ -205,6 +348,21 @@
       "options": {
         "city": "Město ze seznamu",
         "point": "Kolem bodu (mapa a okruh)"
+      }
+    },
+    "source": {
+      "options": {
+        "map": "Bod na mapě (nebo zadané souřadnice)",
+        "home": "Můj domov v Home Assistantu",
+        "person": "Osoba nebo zařízení, které se pohybuje se mnou",
+        "zone": "Zóna"
+      }
+    },
+    "max_age": {
+      "options": {
+        "standard": "Jen aktuální ceny (výchozí)",
+        "3": "Až 3 dny staré",
+        "7": "Až 7 dní staré"
       }
     }
   },
@@ -232,6 +390,18 @@
     "no_data": {
       "title": "Žádné nové ceny z mBenzin.cz",
       "description": "{title}: žádné aktuální ceny pro {fuels} od {since}. Senzory jsou nedostupné, dokud mBenzin.cz znovu neodpoví. Zkontrolujte, že je [mBenzin.cz]({url}) dostupný a že váš přístupový klíč stále platí (pokud ho mBenzin odmítne, Home Assistant si řekne o nový)."
+    },
+    "person_missing": {
+      "title": "Sledovaná osoba nebo zařízení nenalezeno",
+      "description": "{title}: osoba nebo zařízení {entity} už neexistuje. Oblast zůstane u vašeho domova, dokud nevyberete jinou (Konfigurovat, nebo místo v integraci)."
+    },
+    "zone_missing": {
+      "title": "Sledovaná zóna nenalezena",
+      "description": "{title}: zóna {entity} už neexistuje. Oblast zůstane u vašeho domova, dokud nevyberete jinou (Konfigurovat, nebo místo v integraci)."
+    },
+    "invalid_location": {
+      "title": "Střed místa se nepodařilo najít",
+      "description": "{title}: jeho souřadnice nejsou použitelné. Zachovává se poslední známý střed. Vyberte místo v integraci znovu."
     }
   },
   "services": {

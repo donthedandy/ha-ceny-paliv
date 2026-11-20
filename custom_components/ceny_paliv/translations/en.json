@@ -23,10 +23,12 @@
         "description": "Pick one or more fuels – for example Natural 95 and LPG for a dual-fuel car. Each fuel gets its own sensors. Note that mBenzin does not distinguish E10: the Natural 95 price applies to all 95-octane petrol.",
         "data": {
           "fuels": "Fuels",
-          "language": "Language of the dashboard texts"
+          "language": "Language of the dashboard texts",
+          "max_age_days": "Show older prices too"
         },
         "data_description": {
-          "language": "Sets the language of the labels in the ready-made dashboard views (for example \"My station\"). The language of this setup follows Home Assistant's language."
+          "language": "Sets the language of the labels in the ready-made dashboard views (for example \"My station\"). The language of this setup follows Home Assistant's language.",
+          "max_age_days": "Small stations update their prices rarely. Keep the ones whose price is up to 3 or 7 days old in the list, with the date shown."
         }
       },
       "station": {
@@ -67,6 +69,51 @@
         "data": {
           "key": "Access key"
         }
+      },
+      "source": {
+        "title": "Where is the point?",
+        "description": "Pick the centre of the place: a point on the map, your Home Assistant home, a person or device that moves (the area follows it), or a zone.",
+        "data": {
+          "source": "Centre"
+        }
+      },
+      "point_home": {
+        "title": "Around your home",
+        "description": "Every station within the radius of your Home Assistant home location is included.",
+        "data": {
+          "radius": "Radius",
+          "name": "Name (optional)"
+        },
+        "data_description": {
+          "radius": "In kilometres, 1 to 100.",
+          "name": "Shown in the card and in the names of the sensors. Leave empty for a default name."
+        }
+      },
+      "point_person": {
+        "title": "Around a person or device",
+        "description": "The area moves with the person or device (for example the Home Assistant app on a phone) once it is about 1 km away from the last centre, from the prices already downloaded: no extra request to mBenzin. If its location is unknown, the area stays at home.",
+        "data": {
+          "entity": "Person or device",
+          "radius": "Radius",
+          "name": "Name (optional)"
+        },
+        "data_description": {
+          "radius": "In kilometres, 1 to 100.",
+          "name": "Shown in the card and in the names of the sensors. Leave empty for a default name."
+        }
+      },
+      "point_zone": {
+        "title": "Around a zone",
+        "description": "The centre of the zone is the centre of the area. If the zone is moved, the area follows it.",
+        "data": {
+          "entity": "Zone",
+          "radius": "Radius",
+          "name": "Name (optional)"
+        },
+        "data_description": {
+          "radius": "In kilometres, 1 to 100.",
+          "name": "Shown in the card and in the names of the sensors. Leave empty for a default name."
+        }
       }
     },
     "error": {
@@ -88,10 +135,12 @@
         "description": "Pick one or more fuels – for example Natural 95 and LPG for a dual-fuel car. Each fuel gets its own sensors. Note that mBenzin does not distinguish E10: the Natural 95 price applies to all 95-octane petrol.",
         "data": {
           "fuels": "Fuels",
-          "language": "Language of the dashboard texts"
+          "language": "Language of the dashboard texts",
+          "max_age_days": "Show older prices too"
         },
         "data_description": {
-          "language": "Sets the language of the labels in the ready-made dashboard views (for example \"My station\"). The language of this setup follows Home Assistant's language."
+          "language": "Sets the language of the labels in the ready-made dashboard views (for example \"My station\"). The language of this setup follows Home Assistant's language.",
+          "max_age_days": "Small stations update their prices rarely. Keep the ones whose price is up to 3 or 7 days old in the list, with the date shown."
         }
       },
       "station": {
@@ -131,6 +180,51 @@
         },
         "data_description": {
           "name": "Shown in the card and in the names of the sensors. Leave empty for the coordinates."
+        }
+      },
+      "source": {
+        "title": "Where is the point?",
+        "description": "Pick the centre of the place: a point on the map, your Home Assistant home, a person or device that moves (the area follows it), or a zone.",
+        "data": {
+          "source": "Centre"
+        }
+      },
+      "point_home": {
+        "title": "Around your home",
+        "description": "Every station within the radius of your Home Assistant home location is included.",
+        "data": {
+          "radius": "Radius",
+          "name": "Name (optional)"
+        },
+        "data_description": {
+          "radius": "In kilometres, 1 to 100.",
+          "name": "Shown in the card and in the names of the sensors. Leave empty for a default name."
+        }
+      },
+      "point_person": {
+        "title": "Around a person or device",
+        "description": "The area moves with the person or device (for example the Home Assistant app on a phone) once it is about 1 km away from the last centre, from the prices already downloaded: no extra request to mBenzin. If its location is unknown, the area stays at home.",
+        "data": {
+          "entity": "Person or device",
+          "radius": "Radius",
+          "name": "Name (optional)"
+        },
+        "data_description": {
+          "radius": "In kilometres, 1 to 100.",
+          "name": "Shown in the card and in the names of the sensors. Leave empty for a default name."
+        }
+      },
+      "point_zone": {
+        "title": "Around a zone",
+        "description": "The centre of the zone is the centre of the area. If the zone is moved, the area follows it.",
+        "data": {
+          "entity": "Zone",
+          "radius": "Radius",
+          "name": "Name (optional)"
+        },
+        "data_description": {
+          "radius": "In kilometres, 1 to 100.",
+          "name": "Shown in the card and in the names of the sensors. Leave empty for a default name."
         }
       }
     },
@@ -178,7 +272,11 @@
           "title": "Fuels",
           "description": "Pick one or more fuels – for example Natural 95 and LPG for a dual-fuel car. Each fuel gets its own sensors. Note that mBenzin does not distinguish E10: the Natural 95 price applies to all 95-octane petrol.",
           "data": {
-            "fuels": "Fuels"
+            "fuels": "Fuels",
+            "max_age_days": "Show older prices too"
+          },
+          "data_description": {
+            "max_age_days": "Small stations update their prices rarely. Keep the ones whose price is up to 3 or 7 days old in the list, with the date shown."
           }
         },
         "station": {
@@ -186,6 +284,51 @@
           "description": "Your usual station in {city} for {fuel}. It gets its own sensor with price history, trends and its rank. Leave \"—\" for none.",
           "data": {
             "station": "Favourite station"
+          }
+        },
+        "source": {
+          "title": "Where is the point?",
+          "description": "Pick the centre of the place: a point on the map, your Home Assistant home, a person or device that moves (the area follows it), or a zone.",
+          "data": {
+            "source": "Centre"
+          }
+        },
+        "point_home": {
+          "title": "Around your home",
+          "description": "Every station within the radius of your Home Assistant home location is included.",
+          "data": {
+            "radius": "Radius",
+            "name": "Name (optional)"
+          },
+          "data_description": {
+            "radius": "In kilometres, 1 to 100.",
+            "name": "Shown in the card and in the names of the sensors. Leave empty for a default name."
+          }
+        },
+        "point_person": {
+          "title": "Around a person or device",
+          "description": "The area moves with the person or device (for example the Home Assistant app on a phone) once it is about 1 km away from the last centre, from the prices already downloaded: no extra request to mBenzin. If its location is unknown, the area stays at home.",
+          "data": {
+            "entity": "Person or device",
+            "radius": "Radius",
+            "name": "Name (optional)"
+          },
+          "data_description": {
+            "radius": "In kilometres, 1 to 100.",
+            "name": "Shown in the card and in the names of the sensors. Leave empty for a default name."
+          }
+        },
+        "point_zone": {
+          "title": "Around a zone",
+          "description": "The centre of the zone is the centre of the area. If the zone is moved, the area follows it.",
+          "data": {
+            "entity": "Zone",
+            "radius": "Radius",
+            "name": "Name (optional)"
+          },
+          "data_description": {
+            "radius": "In kilometres, 1 to 100.",
+            "name": "Shown in the card and in the names of the sensors. Leave empty for a default name."
           }
         }
       },
@@ -205,6 +348,21 @@
       "options": {
         "city": "A town from the list",
         "point": "Around a point (map and radius)"
+      }
+    },
+    "source": {
+      "options": {
+        "map": "A point on the map (or typed coordinates)",
+        "home": "My Home Assistant home",
+        "person": "A person or device that moves with me",
+        "zone": "A zone"
+      }
+    },
+    "max_age": {
+      "options": {
+        "standard": "Only recent prices (default)",
+        "3": "Up to 3 days old",
+        "7": "Up to 7 days old"
       }
     }
   },
@@ -232,6 +390,18 @@
     "no_data": {
       "title": "No new prices from mBenzin.cz",
       "description": "{title}: no fresh prices for {fuels} since {since}. The sensors are unavailable until mBenzin.cz answers again. Check that [mBenzin.cz]({url}) is reachable and that your access key is still valid (Home Assistant asks for a new one if it is refused)."
+    },
+    "person_missing": {
+      "title": "Followed person or device not found",
+      "description": "{title}: the person or device {entity} does not exist any more. The area stays at your home until you choose another one (Configure, or the place in the integration)."
+    },
+    "zone_missing": {
+      "title": "Followed zone not found",
+      "description": "{title}: the zone {entity} does not exist any more. The area stays at your home until you choose another one (Configure, or the place in the integration)."
+    },
+    "invalid_location": {
+      "title": "The centre of a place cannot be found",
+      "description": "{title}: its coordinates are not usable. The last known centre is kept. Choose the place again in the integration."
     }
   },
   "services": {
