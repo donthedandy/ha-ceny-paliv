@@ -114,15 +114,15 @@ async def test_full_city_flow_and_sensors(hass, aioclient_mock):
     assert top.attributes["fuel_label"] == "Natural 95" and top.attributes["city_name"] == "Hradec Králové"
     assert top.attributes["language"] == "cs" and top.attributes["labels"]["my_station"] == "Moje stanice"
     assert top.attributes["cp_place"] == "main" and top.attributes["cp_place_name"] == "Hradec Králové"
-    assert top.attributes["friendly_name"] == "Natural 95 · nejlevnější"
+    assert top.attributes["friendly_name"] == "Hradec Králové Natural 95 · nejlevnější"
     home = hass.states.get("sensor.ceny_paliv_n95_home")
     assert home and float(home.state) == 36.9 and home.attributes["rank"] == 1
-    assert home.attributes["friendly_name"] == "Orlen – Bratří Štefanů 69"
+    assert home.attributes["friendly_name"] == "Hradec Králové Orlen – Bratří Štefanů 69"
     assert hass.states.get("sensor.ceny_paliv_n95_1").attributes.get("latitude") is None   # favourite: own sensor
     p2 = hass.states.get("sensor.ceny_paliv_n95_2")
-    assert p2.attributes["latitude"] and p2.attributes["friendly_name"].startswith("2 · ")
+    assert p2.attributes["latitude"] and p2.attributes["friendly_name"].startswith("Hradec Králové 2 · ")
     assert p2.attributes["cp_role"] == "position" and p2.attributes["cp_index"] == 2
-    assert hass.states.get("sensor.ceny_paliv_lpg_top5").attributes["friendly_name"] == "LPG · nejlevnější"
+    assert hass.states.get("sensor.ceny_paliv_lpg_top5").attributes["friendly_name"] == "Hradec Králové LPG · nejlevnější"
     assert hass.states.get("sensor.ceny_paliv_lpg_home") is None            # none chosen -> no home sensor
     assert calls(aioclient_mock, "n95") >= 1
 
@@ -154,10 +154,10 @@ async def test_legacy_entry_keeps_ids_names_and_data(hass, aioclient_mock):
     await hass.async_block_till_done()
     top = hass.states.get("sensor.ceny_paliv_n95_top5")
     assert top and float(top.state) == 36.9 and top.attributes["city_name"] == "Hradec Kralove"   # unchanged title
-    assert top.attributes["friendly_name"] == "Natural 95 · cheapest"
+    assert top.attributes["friendly_name"] == "Hradec Kralove Natural 95 · cheapest"
     assert top.attributes["cp_place"] == "main"
-    assert hass.states.get("sensor.ceny_paliv_n95_home").attributes["friendly_name"] == "Orlen – Bratří Štefanů 69"
-    assert hass.states.get("sensor.ceny_paliv_n95_3").attributes["friendly_name"].startswith("3 · ")
+    assert hass.states.get("sensor.ceny_paliv_n95_home").attributes["friendly_name"] == "Hradec Kralove Orlen – Bratří Štefanů 69"
+    assert hass.states.get("sensor.ceny_paliv_n95_3").attributes["friendly_name"].startswith("Hradec Kralove 3 · ")
     reg = er.async_get(hass)
     assert reg.async_get("sensor.ceny_paliv_n95_top5").unique_id == f"{entry.entry_id}_n95_top5"
     assert reg.async_get("sensor.ceny_paliv_n95_home").unique_id == f"{entry.entry_id}_n95_home"
@@ -291,16 +291,16 @@ async def test_add_a_second_place_shares_the_download(hass, aioclient_mock):
     # the first place is untouched: same ids, same names, same data
     assert ids_before <= {s.entity_id for s in hass.states.async_all()}
     first = hass.states.get("sensor.ceny_paliv_n95_top5")
-    assert first.attributes["friendly_name"] == "Natural 95 · cheapest" == before["friendly_name"]
+    assert first.attributes["friendly_name"] == "Hradec Kralove Natural 95 · cheapest" == before["friendly_name"]
     assert first.state == hass.states.get("sensor.ceny_paliv_n95_top5").state and first.attributes["cp_place"] == "main"
     # the second place has its own sensors, names and place attributes
     second = hass.states.get("sensor.ceny_paliv_brno_n95_top5")
-    assert second and second.attributes["friendly_name"] == "Natural 95 · cheapest · Brno"
+    assert second and second.attributes["friendly_name"] == "Brno Natural 95 · cheapest"
     sub_id = [s for s in entry.subentries][0]
     assert second.attributes["cp_place"] == sub_id and second.attributes["cp_place_name"] == "Brno"
     assert second.attributes["cp_fuel"] == "n95"
     assert hass.states.get("sensor.ceny_paliv_brno_n95_home") is not None
-    assert hass.states.get("sensor.ceny_paliv_brno_n95_1").attributes["friendly_name"].endswith(" · Brno")
+    assert hass.states.get("sensor.ceny_paliv_brno_n95_1").attributes["friendly_name"].startswith("Brno 1 · ")
     # two downloads of n95 in all: one by the "add place" form (town list) and one refresh shared by BOTH places
     assert calls(aioclient_mock, "n95") - n95_calls == 2
 

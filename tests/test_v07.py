@@ -202,7 +202,7 @@ async def test_average_sensors(hass, aioclient_mock):
     assert region.attributes["region"] == "Královéhradecký kraj" and region.attributes["region_code"] == "CZ052"
     assert area.attributes["vs_region"] == round(float(area.state) - float(region.state), 2)
     assert area.attributes["state_class"] == "measurement" and area.attributes["unit_of_measurement"] == "Kč/l"
-    assert area.attributes["friendly_name"] == "Natural 95 · average · area"
+    assert area.attributes["friendly_name"] == "Hradec Kralove Natural 95 · average · area"
     assert area.attributes["attribution"] == "Ceny: mbenzin.cz"
 
 
@@ -461,7 +461,7 @@ async def test_price_change_events(hass, aioclient_mock):
     state = hass.states.get(event_id)
     assert state and state.attributes["event_types"] == ["favourite_cheaper", "favourite_dearer", "cheapest_cheaper"]
     assert state.state == "unknown", "the prices at start-up are only the baseline"
-    assert state.attributes["friendly_name"] == "Natural 95 · price change"
+    assert state.attributes["friendly_name"] == "Hradec Kralove Natural 95 · price change"
     unit = {"Orlen-Bratri-Stefanu-69": None}
 
     # the favourite gets cheaper (and so does the cheapest price of the town)

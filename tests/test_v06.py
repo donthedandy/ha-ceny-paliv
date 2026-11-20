@@ -309,11 +309,11 @@ async def test_one_device_per_place_and_ids_do_not_change(hass, aioclient_mock):
     top = registry.async_get("sensor.ceny_paliv_n95_top5")
     assert top.unique_id == f"{entry.entry_id}_n95_top5"
     device = dr.async_get(hass).async_get(top.device_id)
-    assert device.name == "Ceny paliv Hradec Kralove" and device.manufacturer == "mBenzin.cz"
+    assert device.name == "Hradec Kralove" and device.manufacturer == "mBenzin.cz"
     assert {registry.async_get(f"sensor.ceny_paliv_n95_{i}").device_id for i in range(1, 6)} == {top.device_id}
     state = hass.states.get("sensor.ceny_paliv_n95_top5")
     assert state.attributes["attribution"] == "Ceny: mbenzin.cz"
-    assert state.name.startswith("Natural 95")      # the entity name does not get the device name in front
+    assert state.name == "Hradec Kralove Natural 95 · cheapest"      # the device (the place) comes first
 
 
 async def test_removing_a_fuel_removes_its_sensors(hass, aioclient_mock):
@@ -360,7 +360,7 @@ async def test_a_second_place_gets_its_own_device(hass, aioclient_mock):
     main = registry.async_get("sensor.ceny_paliv_n95_top5").device_id
     other = next(e for e in registry.entities.values() if e.platform == DOMAIN and "near_home" in e.entity_id and e.entity_id.endswith("top5"))
     assert other.device_id and other.device_id != main
-    assert dr.async_get(hass).async_get(other.device_id).name == "Ceny paliv Near home"
+    assert dr.async_get(hass).async_get(other.device_id).name == "Near home"
 
 
 async def test_diagnostics_forget_an_old_exception_after_recovery(hass, hass_client, aioclient_mock):
