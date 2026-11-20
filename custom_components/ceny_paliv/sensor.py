@@ -17,7 +17,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import station_title
+from homeassistant.util import slugify
+
+from .api import MAIN_PLACE, Place, station_title
 from .const import FUELS, TOP
 from .coordinator import CenyPalivConfigEntry, CenyPalivCoordinator
 
@@ -44,13 +46,17 @@ HOME_ATTRIBUTES = ("updated", "updated_date", "age_days", "rank", "fresh_count",
 
 async def async_setup_entry(hass: HomeAssistant, entry: CenyPalivConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
-    entities: list[CenyPalivEntity] = []
-    for fuel in coordinator.fuels:
-        entities.append(CenyPalivTop5Sensor(coordinator, entry, fuel))
-        if coordinator.homes.get(fuel):
-            entities.append(CenyPalivHomeSensor(coordinator, entry, fuel))
-        entities.extend(CenyPalivPositionSensor(coordinator, entry, fuel, i) for i in range(TOP))
-    async_add_entities(entities)
+    for place in coordinator.places:
+        entities: list[CenyPalivEntity] = []
+        for fuel in place.fuels:
+            entities.append(CenyPalivTop5Sensor(coordinator, entry, place, fuel))
+            if place.homes.get(fuel):
+                entities.append(CenyPalivHomeSensor(coordinator, entry, place, fuel))
+            entities.extend(CenyPalivPositionSensor(coordinator, entry, place, fuel, i) for i in range(TOP))
+        if place.key == MAIN_PLACE:
+            async_add_entities(entities)
+        else:
+            async_add_entities(entities, config_subentry_id=place.key)
 
 
 class CenyPalivEntity(CoordinatorEntity[CenyPalivCoordinator], SensorEntity):
@@ -58,19 +64,34 @@ class CenyPalivEntity(CoordinatorEntity[CenyPalivCoordinator], SensorEntity):
 
     _attr_has_entity_name = False  # keeps the entity ids predictable: sensor.ceny_paliv_<fuel>_...
 
-    def __init__(self, coordinator: CenyPalivCoordinator, entry: CenyPalivConfigEntry, fuel: str, suffix: str) -> None:
+    def __init__(
+        self, coordinator: CenyPalivCoordinator, entry: CenyPalivConfigEntry, place: Place, fuel: str, suffix: str
+    ) -> None:
         super().__init__(coordinator)
+        self._place = place
         self._fuel = fuel
-        self._attr_unique_id = f"{entry.entry_id}_{fuel}_{suffix}"
+        if place.key == MAIN_PLACE:
+            # the first place keeps the ids it had before places existed
+            self._attr_unique_id = f"{entry.entry_id}_{fuel}_{suffix}"
+            self.entity_id = f"sensor.ceny_paliv_{fuel}_{suffix}"  # suggestion for new installs
+        else:
+            self._attr_unique_id = f"{entry.entry_id}_{place.key}_{fuel}_{suffix}"
+            self.entity_id = f"sensor.ceny_paliv_{slugify(place.title)}_{fuel}_{suffix}"
         self._attr_name = f"Ceny paliv {fuel} {suffix}"
-        self.entity_id = f"sensor.ceny_paliv_{fuel}_{suffix}"  # suggestion for new installs
         self._attr_native_unit_of_measurement = FUELS.get(fuel, (fuel, "Kč/l"))[1]
         # No device on purpose: with a device, Home Assistant puts the device name in front of every entity name
         # ("Ceny paliv Hradec Kralove 1 · Orlen – ..."), which hides the station in narrow cards.
 
     @property
     def _payload(self) -> dict[str, Any]:
-        return (self.coordinator.data or {}).get(self._fuel) or {}
+        return ((self.coordinator.data or {}).get(self._place.key) or {}).get(self._fuel) or {}
+
+    @property
+    def _where(self) -> str:
+        """' · <place>' once there are several places, so the names stay distinct (the first place keeps its names)."""
+        if self._place.key == MAIN_PLACE or len(self.coordinator.places) < 2:
+            return ""
+        return f" · {self._place.title}"
 
     @property
     def _label(self) -> str:
@@ -83,12 +104,12 @@ class CenyPalivEntity(CoordinatorEntity[CenyPalivCoordinator], SensorEntity):
 class CenyPalivTop5Sensor(CenyPalivEntity):
     _attr_icon = "mdi:gas-station"
 
-    def __init__(self, coordinator, entry, fuel) -> None:
-        super().__init__(coordinator, entry, fuel, "top5")
+    def __init__(self, coordinator, entry, place, fuel) -> None:
+        super().__init__(coordinator, entry, place, fuel, "top5")
 
     @property
     def name(self) -> str:
-        return f"{self._label} · {self._word('name_cheapest', 'cheapest')}"
+        return f"{self._label} · {self._word('name_cheapest', 'cheapest')}{self._where}"
 
     @property
     def native_value(self) -> float | None:
@@ -98,7 +119,7 @@ class CenyPalivTop5Sensor(CenyPalivEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         attrs = {k: self._payload.get(k) for k in TOP_ATTRIBUTES}
-        attrs.update(cp_fuel=self._fuel, cp_role="top5")
+        attrs.update(cp_fuel=self._fuel, cp_role="top5", cp_place=self._place.key, cp_place_name=self._place.title)
         return attrs
 
 
@@ -108,15 +129,15 @@ class CenyPalivHomeSensor(CenyPalivEntity):
     _attr_icon = "mdi:gas-station-in-use"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, coordinator, entry, fuel) -> None:
-        super().__init__(coordinator, entry, fuel, "home")
+    def __init__(self, coordinator, entry, place, fuel) -> None:
+        super().__init__(coordinator, entry, place, fuel, "home")
 
     @property
     def name(self) -> str:
         home = self._payload.get("home")
         if home:
-            return station_title(home["name"], home["address"])
-        return f"{self._label} · {self._word('name_home', 'favourite station')}"
+            return station_title(home["name"], home["address"]) + self._where
+        return f"{self._label} · {self._word('name_home', 'favourite station')}{self._where}"
 
     @property
     def _home(self) -> dict[str, Any] | None:
@@ -135,7 +156,7 @@ class CenyPalivHomeSensor(CenyPalivEntity):
         home = self._home or {}
         attrs = {"station": home.get("address"), "latitude": home.get("lat"), "longitude": home.get("lng")}
         attrs.update({k: home.get(k) for k in HOME_ATTRIBUTES})
-        attrs.update(cp_fuel=self._fuel, cp_role="home")
+        attrs.update(cp_fuel=self._fuel, cp_role="home", cp_place=self._place.key, cp_place_name=self._place.title)
         return attrs
 
 
@@ -144,16 +165,16 @@ class CenyPalivPositionSensor(CenyPalivEntity):
 
     _attr_icon = "mdi:gas-station"
 
-    def __init__(self, coordinator, entry, fuel, index: int) -> None:
-        super().__init__(coordinator, entry, fuel, str(index + 1))
+    def __init__(self, coordinator, entry, place, fuel, index: int) -> None:
+        super().__init__(coordinator, entry, place, fuel, str(index + 1))
         self._index = index
 
     @property
     def name(self) -> str:
         s = self._station
         if s:
-            return f"{self._index + 1} · {station_title(s['name'], s['address'])}"
-        return f"{self._label} · {self._index + 1}"
+            return f"{self._index + 1} · {station_title(s['name'], s['address'])}{self._where}"
+        return f"{self._label} · {self._index + 1}{self._where}"
 
     @property
     def _station(self) -> dict[str, Any] | None:
@@ -171,7 +192,13 @@ class CenyPalivPositionSensor(CenyPalivEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         s = self._station
-        attrs: dict[str, Any] = {"cp_fuel": self._fuel, "cp_role": "position", "cp_index": self._index + 1}
+        attrs: dict[str, Any] = {
+            "cp_fuel": self._fuel,
+            "cp_role": "position",
+            "cp_index": self._index + 1,
+            "cp_place": self._place.key,
+            "cp_place_name": self._place.title,
+        }
         if s:
             # the favourite station is drawn by its own sensor on the map: no coordinates here
             attrs.update(

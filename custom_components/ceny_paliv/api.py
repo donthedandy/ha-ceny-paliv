@@ -2,7 +2,11 @@
 from __future__ import annotations
 
 import datetime as dt
+import math
 import re
+import unicodedata
+from collections import Counter
+from dataclasses import dataclass, field
 from typing import Any
 
 import aiohttp
@@ -65,6 +69,42 @@ async def async_fetch_markers(session: aiohttp.ClientSession, key: str, fuel: st
     return markers
 
 
+MODE_CITY = "city"
+MODE_POINT = "point"
+MAIN_PLACE = "main"
+
+
+@dataclass(frozen=True)
+class Place:
+    """One place to follow: a town of the mBenzin list, or a point with a radius."""
+
+    key: str  # MAIN_PLACE for the first place of the entry, else the sub-entry id
+    title: str
+    mode: str = MODE_CITY
+    city: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    radius_km: float = 10.0
+    fuels: tuple[str, ...] = ()
+    homes: dict[str, str] = field(default_factory=dict)
+
+
+def distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Great-circle distance (haversine)."""
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lng2 - lng1) / 2) ** 2
+    return 6371.0 * 2 * math.asin(math.sqrt(a))
+
+
+def markers_in_place(markers: list[dict[str, Any]], place: Place) -> list[dict[str, Any]]:
+    """The markers that belong to the place (same town slug, or within the radius of the point)."""
+    if place.mode == MODE_POINT and place.lat is not None and place.lng is not None:
+        return [
+            m for m in markers if distance_km(place.lat, place.lng, m["lat"], m["lng"]) <= place.radius_km
+        ]
+    return [m for m in markers if city_of(m) == place.city]
+
+
 def city_of(marker: dict[str, Any]) -> str | None:
     """City slug of a marker: /Ceny-benzinu-a-nafty/<City>/<Station>/<id>."""
     parts = marker.get("url", "").split("/")
@@ -92,18 +132,38 @@ def station_title(name: str, address: str) -> str:
     return f"{name} – {street}" if street else name
 
 
+def _alnum(text: str) -> str:
+    """Lower case letters and digits only, no diacritics: 'Plzeň - Koterov' -> 'plzenkoterov'."""
+    plain = "".join(c for c in unicodedata.normalize("NFD", text.lower()) if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]", "", plain)
+
+
 def city_options(markers: list[dict[str, Any]]) -> list[dict[str, str]]:
-    """Cities that have at least one station, for a select box."""
-    slugs = {c for m in markers if (c := city_of(m))}
-    return [{"value": s, "label": pretty(s)} for s in sorted(slugs, key=str.casefold)]
+    """Towns that have at least one station, for a select box.
 
-
-def station_options(markers: list[dict[str, Any]], city: str) -> list[dict[str, str]]:
-    """Stations of one city selling the fuel, for a select box."""
-    out = []
+    The value is the mBenzin slug ('Dobrany'); the label is the real spelling ('Dobřany'), taken from the
+    `addr` field of the stations ('tř. 1.máje 996, Dobřany') when it matches the slug.
+    """
+    spelling: dict[str, Counter] = {}
     for m in markers:
-        if city_of(m) != city:
+        slug = city_of(m)
+        if not slug:
             continue
+        counter = spelling.setdefault(slug, Counter())
+        town = str(m.get("addr") or "").rsplit(",", 1)[-1].strip()
+        if town and _alnum(town) == _alnum(slug):
+            counter[town] += 1
+    options = [
+        {"value": slug, "label": counter.most_common(1)[0][0] if counter else pretty(slug)}
+        for slug, counter in spelling.items()
+    ]
+    return sorted(options, key=lambda o: (_alnum(o["label"]), o["label"]))
+
+
+def station_options(markers: list[dict[str, Any]], place: Place) -> list[dict[str, str]]:
+    """Stations of one place selling the fuel, for a select box."""
+    out = []
+    for m in markers_in_place(markers, place):
         slug = station_slug(m)
         out.append({"value": slug, "label": station_title(m["name"], pretty(slug))})
     return sorted(out, key=lambda o: o["label"].casefold())
@@ -150,20 +210,20 @@ def build_payload(
     markers: list[dict[str, Any]],
     *,
     fuel: str,
-    city: str,
+    place: Place,
     home_slug: str | None,
     history: dict[str, list[list]],
     now: dt.datetime,
     language: str = DEFAULT_LANGUAGE,
 ) -> dict[str, Any]:
-    """Top stations of the city + the favourite station, with trends.
+    """Top stations of the place + the favourite station, with trends.
 
     `history` ({station slug: [[date, price], ...]}) is updated in place with today's prices.
     """
     today = now.date()
     label, unit = FUELS.get(fuel, (fuel, "Kč/l"))
     max_age = MAX_AGE_DAYS_BY_FUEL.get(fuel, MAX_AGE_DAYS_DEFAULT)
-    in_city = [m for m in markers if city_of(m) == city]
+    in_city = markers_in_place(markers, place)
 
     cutoff = (today - dt.timedelta(days=HISTORY_DAYS)).isoformat()
     for m in in_city:
@@ -175,7 +235,7 @@ def build_payload(
     def entry(m: dict[str, Any], d: dt.date | None, rank: int | None) -> dict[str, Any]:
         slug = station_slug(m)
         log = history.get(slug, [])
-        return {
+        out = {
             "rank": rank,
             "name": m["name"],
             "chain": m.get("chain") or m["name"],
@@ -190,6 +250,9 @@ def build_payload(
             "home": bool(home_slug) and slug == home_slug,
             "trends": {str(n): _trend(log, m["price"], today, n) for n in PERIODS},
         }
+        if place.mode == MODE_POINT and place.lat is not None:
+            out["distance_km"] = round(distance_km(place.lat, place.lng, m["lat"], m["lng"]), 1)
+        return out
 
     kept: list[tuple[dict[str, Any], dt.date]] = []
     excluded = 0
@@ -230,7 +293,7 @@ def build_payload(
         "fuel": fuel,
         "fuel_label": label,
         "unit": unit,
-        "city_name": pretty(city),
+        "city_name": place.title,
         "language": language,
         "labels": LABELS.get(language, LABELS[DEFAULT_LANGUAGE]),
         "next_update": (now + UPDATE_INTERVAL).isoformat(timespec="seconds"),

@@ -6,7 +6,7 @@ from datetime import timedelta
 DOMAIN = "ceny_paliv"
 
 CARD_URL = "/ceny_paliv_static/ceny-paliv-card.js"
-CARD_VERSION = "0.4.1"
+CARD_VERSION = "0.5.0"
 
 # Optional station logos (pack in the GitHub repository, downloaded on request, see logos.py)
 LOGO_URL = "/ceny_paliv_static/logos"  # served from <config>/ceny_paliv_logos/
@@ -22,6 +22,15 @@ CONF_HOMES = "homes"  # {fuel: station slug}
 CONF_LANGUAGE = "language"
 CONF_STATION = "station"
 CONF_LOGOS = "logos"  # logo ids ticked in the setup
+CONF_MODE = "mode"  # "city" (default for entries made before places existed) or "point"
+CONF_NAME = "name"  # optional name of a place
+CONF_LATITUDE = "latitude"
+CONF_LONGITUDE = "longitude"
+CONF_RADIUS = "radius"  # km
+CONF_LOCATION = "location"  # LocationSelector value in the forms
+
+SUBENTRY_PLACE = "place"
+DEFAULT_RADIUS_KM = 10
 
 NONE_VALUE = "__none__"
 
