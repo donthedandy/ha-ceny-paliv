@@ -43,9 +43,13 @@ Co je dobré vědět:
 
 ## 2. Instalace přes HACS
 
+Jedním kliknutím: [![Open your Home Assistant instance and open this repository in the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=donthedandy&repository=ha-ceny-paliv&category=integration) otevře repozitář v HACS vašeho Home Assistantu (poprvé se [My Home Assistant](https://my.home-assistant.io) zeptá na adresu vaší instance). Pak ho stáhněte a **restartujte** Home Assistant.
+
+Nebo ručně:
+
 1. V HACS otevřete menu **⋮ → Vlastní repozitáře** a přidejte `https://github.com/donthedandy/ha-ceny-paliv` s kategorií **Integrace** (Integration).
 2. Vyhledejte **Ceny paliv**, stáhněte ho a **restartujte** Home Assistant.
-3. Otevřete **Nastavení → Zařízení a služby → Přidat integraci → Ceny paliv** a postupně zadejte:
+3. Otevřete **Nastavení → Zařízení a služby → Přidat integraci → Ceny paliv** (nebo klikněte na [![Open your Home Assistant instance and start setting up the Ceny paliv integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=ceny_paliv)) a postupně zadejte:
    1. **přístupový klíč**,
    2. **druh místa**: *město ze seznamu*, nebo *kolem bodu* (značka na mapě a okruh, výchozí 10 km se středem v poloze vašeho Home Assistantu),
    3. město (nebo přesunout značku a nastavit okruh),

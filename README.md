@@ -38,9 +38,13 @@ mBenzin blocks plain scraping with a browser check, but they give a **personal a
 
 ## 2. Install with HACS
 
+One click: [![Open your Home Assistant instance and open this repository in the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=donthedandy&repository=ha-ceny-paliv&category=integration) opens the repository in the HACS of your Home Assistant (the first time, [My Home Assistant](https://my.home-assistant.io) asks for the address of your instance). Then download it and **restart** Home Assistant.
+
+Or by hand:
+
 1. HACS → ⋮ → **Custom repositories** → add `https://github.com/donthedandy/ha-ceny-paliv`, category **Integration**.
 2. Search for **Ceny paliv**, download it, **restart** Home Assistant.
-3. Settings → Devices & services → **Add integration** → **Ceny paliv**, then:
+3. Settings → Devices & services → **Add integration** → **Ceny paliv** (or click [![Open your Home Assistant instance and start setting up the Ceny paliv integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=ceny_paliv)), then:
    1. paste your **access key**
    2. choose the **kind of place**: *a town from the list*, or *around a point* (a marker on the map and a radius, 10 km by default, centred on your Home Assistant location)
    3. choose the town (or move the marker and set the radius)
