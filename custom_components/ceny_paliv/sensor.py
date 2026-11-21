@@ -155,6 +155,10 @@ class CenyPalivHomeSensor(CenyPalivEntity):
         return self._home["price"] if self._home else None
 
     @property
+    def entity_picture(self) -> str | None:
+        return self._logo_picture(self._home)
+
+    @property
     def extra_state_attributes(self) -> dict[str, Any]:
         home = self._home or {}
         attrs = {"station": home.get("address"), "latitude": home.get("lat"), "longitude": home.get("lng")}
@@ -191,6 +195,10 @@ class CenyPalivPositionSensor(CenyPalivEntity):
     @property
     def native_value(self) -> float | None:
         return self._station["price"] if self._station else None
+
+    @property
+    def entity_picture(self) -> str | None:
+        return self._logo_picture(self._station)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

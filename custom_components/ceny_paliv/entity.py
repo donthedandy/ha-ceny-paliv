@@ -8,8 +8,9 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
 from .api import MAIN_PLACE, Place
-from .const import ATTRIBUTION, DOMAIN, FUELS, SOURCE_URL
+from .const import ATTRIBUTION, DOMAIN, FUELS, LOGO_URL, SOURCE_URL
 from .coordinator import CenyPalivConfigEntry, CenyPalivCoordinator
+from .logos import normalize
 
 
 class CenyPalivBaseEntity(CoordinatorEntity[CenyPalivCoordinator]):
@@ -59,3 +60,19 @@ class CenyPalivBaseEntity(CoordinatorEntity[CenyPalivCoordinator]):
 
     def _word(self, key: str, default: str) -> str:
         return (self._payload.get("labels") or {}).get(key, default)
+
+    def _logo_picture(self, station: dict[str, Any] | None) -> str | None:
+        """URL of the logo of a station's chain (from the downloaded pack), None when there is none.
+
+        The longest chain name that matches wins, like in the card. Because the sensors are ranks, the picture
+        follows the station that currently holds the rank.
+        """
+        if not station:
+            return None
+        key = normalize(station.get("chain") or station.get("name") or "")
+        best, length = None, 0
+        for logo in self._payload.get("logos") or []:
+            for match in logo.get("match") or []:
+                if (key == match or key.startswith(match + " ")) and len(match) > length:
+                    best, length = logo.get("id"), len(match)
+        return f"{LOGO_URL}/{best}.png" if best else None
