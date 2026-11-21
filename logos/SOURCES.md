@@ -18,6 +18,7 @@ Sources (the files were resized and placed on a white square; the artwork itself
 | `mol.png` | MOL | [Commons: File:MOL Logo.svg](https://commons.wikimedia.org/wiki/File:MOL_Logo.svg) |
 | `omv.png` | OMV | [Commons: File:Omv logo.svg](https://commons.wikimedia.org/wiki/File:Omv_logo.svg) |
 | `orlen.png` | Orlen | [Commons: File:Orlen wordmark logo.svg](https://commons.wikimedia.org/wiki/File:Orlen_wordmark_logo.svg) |
+| `prim.png` | Prim | Logo file supplied by the project maintainer (the Prim wordmark, scaled to fit the square) |
 | `shell.png` | Shell | [Commons: File:Shell.svg](https://commons.wikimedia.org/wiki/File:Shell.svg) |
 | `silmet.png` | Silmet | [silmet.cz website icon](https://silmet.cz/) |
 | `tankono.png` | Tank ONO | [Commons: File:Logo tank ono.gif](https://commons.wikimedia.org/wiki/File:Logo_tank_ono.gif) |
