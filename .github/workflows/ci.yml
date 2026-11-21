@@ -66,5 +66,3 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          # topics: a repository setting (GitHub "About" box), not part of the code
-          ignore: brands topics
