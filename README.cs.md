@@ -4,7 +4,7 @@
 
 [English](README.md) · **Česky**
 
-Integrace pro HACS, která v Home Assistantu ukazuje ceny paliv z [mBenzin.cz](https://www.mbenzin.cz) pro **vaše město**: **Natural 95, naftu, LPG, CNG** a další. Najdete v ní žebříček nejlevnějších čerpacích stanic, mapu a **vaši oblíbenou stanici** s historií cen a trendy. Všechno se nastavuje v rozhraní Home Assistantu, bez úprav souborů.
+Integrace pro HACS, která v Home Assistantu sleduje ceny paliv z [mBenzin.cz](https://www.mbenzin.cz): **nejlevnější stanice ve vašem okolí** pro paliva, která používáte – **Natural 95, naftu, LPG, CNG** a další –, **vaši oblíbenou stanici** s historií cen a trendy, **průměrné ceny ve městě, kraji i celé republice** a hotovou **kartu pro dashboard** s mapami, grafem za 30 dní, detailem stanice a navigací na jedno kliknutí. Sledovat můžete libovolný počet míst (město, bod s okruhem nebo oblast, která se pohybuje s vámi), k tomu automatizace a blueprinty pro změny cen. Všechno se nastavuje v rozhraní Home Assistantu, bez úprav souborů.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card.png" alt="Karta: oblíbená stanice s trendy a 5 nejlevnějších stanic, s logy" width="330">
@@ -22,7 +22,7 @@ Integrace pro HACS, která v Home Assistantu ukazuje ceny paliv z [mBenzin.cz](h
 - **Průměrné ceny** v celé republice, ve vašem kraji a ve vaší oblasti a jak si vaše oblast oproti nim stojí.
 - **Události o změně ceny** a tři hotové **blueprinty** pro automatizace: oblíbená stanice zlevní, cena klesne pod váš limit, levná stanice poblíž.
 - U oblíbené stanice: aktuální cena, **trendy oproti 1, 2, 7, 14 a 30 dnům**, pořadí ve městě a dlouhodobá statistika (graf za 30 dní).
-- Hotová **karta pro dashboard** (`ceny-paliv-card`) přímo v integraci – přidáte ji z nabídky karet, bez kopírování YAML – s volbou jazyka **čeština / angličtina**. Je **přizpůsobitelná**: na širokém dashboardu dva sloupce, v telefonu jeden, kompaktní verze a každou část lze umístit jako samostatnou kartu. Části: oblíbená stanice, seznam (řazení podle **ceny, vzdálenosti nebo „vyplatí se“**), mapa, **vlastní graf za 30 dní** (vaše stanice proti nejlevnější a průměru), **všechna paliva a cena plné nádrže**, **mapa krajů** a **mapa stanic s barevnými cenami**, zobrazení **„na cestě“** a **místa vedle sebe**. Může převzít vzhled motivu Home Assistantu nebo se změnit na velkou cenu pro nástěnný panel.
+- Hotová **karta pro dashboard** (`ceny-paliv-card`) přímo v integraci – přidáte ji z nabídky karet, bez kopírování YAML – s volbou jazyka **čeština / angličtina**. Je **přizpůsobitelná**: na širokém dashboardu dva sloupce, v telefonu jeden, kompaktní verze a každou část lze umístit jako samostatnou kartu. Části: oblíbená stanice, seznam (řazení podle **ceny nebo vzdálenosti**; po klepnutí na stanici se otevře její detail), **mapa** (stanice s **logem** se kreslí jako logo), **vlastní graf za 30 dní** (vaše stanice proti nejlevnější a průměru, s **průměrem, minimem a maximem** vašeho města za období), **všechna paliva a cena plné nádrže**, **mapa krajů** a **mapa stanic s barevnými cenami**, zobrazení **„na cestě“** a **místa vedle sebe**. Vzdálenosti se měří **od vašeho domova v Home Assistantu** (nebo od bodu či osoby daného místa). Může převzít vzhled motivu Home Assistantu nebo se změnit na velkou cenu pro nástěnný panel.
 - **Odznak** a **funkce dlaždice** s cenou paliva.
 - Volitelná **loga čerpacích stanic** (Orlen, MOL, Shell, Tesco…): zaškrtnete řetězce při nastavení a stáhnou se za vás. Řetězce bez loga dostanou barevný odznak s iniciálami.
 - Zastaralé ceny se skrývají: u benzínu a nafty cena starší než včerejšek, u CNG starší než 3 dny, u LPG a AdBlue starší než 7 dní. Malé stanice aktualizují zřídka: volba **Zobrazit i starší ceny** (až 3 nebo 7 dní) je ponechá v seznamu s uvedeným datem ceny.
@@ -143,14 +143,13 @@ Pro každé palivo jedna karta: pro vůz na dvě paliva přidejte druhou kartu s
 |---|---|---|
 | `fuel` | – | povinné |
 | `place` | první místo | název místa, sledujete-li jich víc (vizuální editor nabídne seznam) |
-| `show` | `[home, list, map, graph]` | které části zobrazit: `home` (oblíbená stanice), `list` (nejlevnější stanice), `map` (mapa Home Assistantu), `graph` (30 dní: vaše stanice, nejlevnější, průměr), `prices` (mapa stanic s barevnými cenami), `regions` (mapa krajů), `tank` (všechna paliva a plná nádrž), `road` (nejbližší výhodné zastávky s tlačítkem navigace), `places` (více míst vedle sebe) |
+| `show` | `[home, list, map, graph]` | které části zobrazit: `home` (oblíbená stanice), `list` (nejlevnější stanice), `map` (mapa Home Assistantu), `graph` (30 dní: vaše stanice, nejlevnější, průměr), `prices` (mapa stanic s barevnými cenami), `regions` (mapa krajů), `tank` (všechna paliva a plná nádrž), `road` (nejbližší stanice s tlačítkem navigace), `places` (více míst vedle sebe) |
 | `layout` | `auto` | `auto`: dva sloupce (stanice a seznam vlevo, mapa a graf vpravo), je-li karta široká, a jeden sloupec, je-li úzká, třeba v telefonu; `columns`: vždy dva; `stack`: vždy jeden |
 | `stations` | `5` | kolik stanic v seznamu (1–10; mapa Home Assistantu ukazuje nejvýše 5) |
-| `sort` | `price` | `price` (cena), `distance` (vzdálenost od středu místa) nebo `worth`: úspora na plné nádrži proti průměru po odečtení nákladů na objížďku. Tlačítka nad seznamem umožňují přepínat |
+| `sort` | `price` | `price` (cena) nebo `distance` (vzdálenost). Vzdálenosti se měří od vašeho domova v Home Assistantu, pokud je místo město poblíž, jinak od bodu nebo osoby daného místa, jinak od středu města. Tlačítka nad seznamem umožňují přepínat |
 | `navigation` | `google` | aplikace tlačítka navigace: `google`, `mapy` (Mapy.com) nebo `waze`. Detail stanice nabízí všechny tři |
 | `fuel_switch` | `false` | tlačítka pro přepnutí paliva bez úpravy karty |
-| `tank_size` | `40` | litry plné nádrže (část `tank`, „vyplatí se“) |
-| `consumption` | `7` | l/100 km, pro náklady na objížďku |
+| `tank_size` | `40` | litry plné nádrže (část `tank`) |
 | `places` | – | názvy míst zobrazených vedle sebe (část `places`) |
 | `look` | `dark` | `dark` (vlastní vzhled karty) nebo `ha` (barvy a zaoblení motivu Home Assistantu) |
 | `big` | `false` | nástěnný panel: jedna velká cena (oblíbená stanice, jinak nejlevnější) |
@@ -163,15 +162,15 @@ Texty karty odpovídají jazyku zvolenému při nastavení. Pokud se karta po ak
 
 ### Nové části
 
-<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card-v08-maps.png" alt="Seznam seřazený podle „vyplatí se“, mapa stanic s barevnými cenami, mapa krajů a plná nádrž" width="780"></p>
-<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card-v08-graph-road.png" alt="Vlastní graf za 30 dní, zobrazení „na cestě“ s tlačítky navigace" width="560"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card-v081-maps.png" alt="Seznam, mapa stanic s barevnými cenami, mapa krajů a plná nádrž" width="780"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card-v081-graph-road.png" alt="Vlastní graf za 30 dní, zobrazení „na cestě“ s tlačítky navigace" width="560"></p>
 
 
 - **`graph`** kreslí posledních 30 dní oblíbené stanice, nejlevnější stanice a průměru vaší oblasti z dlouhodobých statistik Home Assistantu (plní se s ukládáním cen).
 - **`prices`** kreslí stanice na jednoduché mapě: každá značka nese cenu a je zbarvená od zelené (levná) po červenou (drahá); vaše stanice má bílý okraj, klepnutím na značku otevřete detail.
 - **`regions`** obarví 14 krajů podle průměrné ceny; klepnutím na kraj uvidíte průměr, pořadí a rozdíl oproti republice. Potřebuje průměrné ceny; váš kraj je orámovaný.
 - **`tank`** vypíše každé palivo místa s nejnižší cenou, vaší stanicí, průměrem, cenou plné nádrže u nejlevnější stanice a úsporou proti průměru; klepnutím na palivo ho porovnáte níže.
-- **`road`** je pro místo, které sleduje osobu nebo bod: tři nejvýhodnější zastávky, nejbližší první, s tlačítkem navigace.
+- **`road`** je pro místo, které sleduje osobu nebo bod: tři nejbližší stanice s tlačítkem navigace. Funguje i pro město poblíž vašeho domova v Home Assistantu: vzdálenosti se pak měří od domova.
 - **`places`** dá vedle sebe několik míst (`places: [Praha, Brno]`).
 
 **Odznak**: `type: custom:ceny-paliv-badge`, `fuel: n95` (`place:` pro jiné místo, `show: home` pro oblíbenou stanici). **Funkce dlaždice**: přidejte `features: [{type: custom:ceny-paliv-tile-feature}]` ke kartě Dlaždice, jejíž entitou je senzor Ceny paliv (nejnižší cena, průměr, rozdíl a vaše pořadí).
@@ -203,7 +202,7 @@ Upozornění na změnu ceny na telefonu: viz `examples/price_alert.yaml`.
 
 ## 4. Loga čerpacích stanic (volitelné)
 
-Karta u každé stanice ukazuje kulaté logo jejího řetězce. Bez loga nakreslí barevný odznak s iniciálami řetězce (`OR`, `PR`…), takže není třeba nic nastavovat.
+Karta u každé stanice ukazuje kulaté logo jejího řetězce. Bez loga nakreslí barevný odznak s iniciálami řetězce (`OR`, `PR`…), takže není třeba nic nastavovat. Logo se objeví i na mapě Home Assistantu v kartě a jako obrázek senzorů stanic všude, kde Home Assistant zobrazuje obrázky entit: senzory `…_1` až `…_5` mají logo stanice, která je právě na daném místě pořadí.
 
 Chcete-li skutečná loga, otevřete **Nastavení → Zařízení a služby → Ceny paliv → Konfigurovat**, přejděte na krok **Loga čerpacích stanic** a zaškrtněte řetězce. Stáhnou se (pár KB každé) z [balíčku log](logos/) v tomto repozitáři do složky `ceny_paliv_logos` v konfiguraci Home Assistantu a karta je najde sama. Odškrtnutím logo odstraníte. Při prvním nastavení jsou předvybrané řetězce z vašeho města. Nestahuje se nic, co nezaškrtnete, a balíček se s integrací neinstaluje.
 
@@ -253,6 +252,7 @@ Co se chystá, je vidět veřejně, každá funkce má vlastní issue:
 
 - **[v0.7.0](https://github.com/donthedandy/ha-ceny-paliv/milestone/1)** – chytřejší data: sledování osoby nebo zařízení, další zdroje polohy, průměrné ceny, starší ceny, čistší adresy, události o změně ceny a blueprinty.
 - **[v0.8.0](https://github.com/donthedandy/ha-ceny-paliv/milestone/2)** – bohatší karta: detail stanice s navigací, řazení, srovnávací graf, cena plné nádrže, další mapy, odznak a dlaždice (vydáno).
+- **v0.8.1** – vzdálenosti od vašeho domova v Home Assistantu, loga řetězců na mapě Home Assistantu, průměr, minimum a maximum města za 30 dní v grafu; „Vyplatí se“ odstraněno (vydáno).
 
 Nápady i hlasy jsou vítány: otevřete issue nebo přidejte 👍 u té, kterou chcete.
 

@@ -4,7 +4,7 @@
 
 **English** · [Česky](README.cs.md)
 
-A HACS integration that shows the cheapest stations of **your city** for the fuel(s) you use — **Natural 95, Diesel, LPG, CNG** and more — plus **your favourite station** with price history and trends. Everything is configured from the Home Assistant UI.
+A HACS integration that follows Czech fuel prices ([mBenzin.cz](https://www.mbenzin.cz)) in Home Assistant: the **cheapest stations around you** for the fuel(s) you use — **Natural 95, Diesel, LPG, CNG** and more —, **your favourite station** with price history and trends, the **average price of your town, your region and the country**, and a ready-made **dashboard card** with maps, a 30-day graph, station details and one-tap navigation. Follow as many places as you like (a town, a point with a radius, or an area that moves with you), with automations and blueprints for price changes. Everything is configured from the Home Assistant UI.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card.png" alt="The card: favourite station with trends and the 5 cheapest stations, with logos" width="330">
@@ -23,7 +23,7 @@ A HACS integration that shows the cheapest stations of **your city** for the fue
 - **Average prices** of the country, of your region (kraj) and of your area, and how your area stands against them
 - **Price-change events** and three ready-made **automation blueprints**: your favourite station gets cheaper, a price drops under your limit, a cheap station near you
 - Favourite station: price, **trends vs 1/2/7/14/30 days ago**, rank in town, long-term statistics (the 30-day graph)
-- A ready-made **dashboard card** (`ceny-paliv-card`) shipped with the integration — add it from the card picker, no YAML to copy — in **English or Czech** (your choice during setup). It is **flexible**: two columns on a wide dashboard, one on a phone, a compact version, and every part can be placed as its own card. Parts: favourite station, list (sort by **price, distance or “worth it”**), map, **own 30-day graph** (your station vs the cheapest vs the average), **all fuels and the cost of a full tank**, a **map of the regions** and a **map of the stations with coloured prices**, an **“on the road”** view and **places side by side**. It can take the look of your Home Assistant theme, or become a big price for a wall panel
+- A ready-made **dashboard card** (`ceny-paliv-card`) shipped with the integration — add it from the card picker, no YAML to copy — in **English or Czech** (your choice during setup). It is **flexible**: two columns on a wide dashboard, one on a phone, a compact version, and every part can be placed as its own card. Parts: favourite station, list (sorted by **price or distance**; tap a station for its sheet), **map** (stations drawn as their **logo** when you have it), **own 30-day graph** (your station vs the cheapest vs the average, with the **average, lowest and highest** of your town over the period), **all fuels and the cost of a full tank**, a **map of the regions** and a **map of the stations with coloured prices**, an **“on the road”** view and **places side by side**. Distances are measured **from your Home Assistant home** (or from the point or person of the place). It can take the look of your Home Assistant theme, or become a big price for a wall panel
 - A **badge** and a **tile card feature** with a fuel price
 - Optional **station logos** (Orlen, MOL, Shell, Tesco…): tick the chains you want in the setup and they are downloaded for you. Chains without a logo get a colour badge with their initials
 - Stale prices are hidden (older than yesterday for petrol/diesel, 3 days for CNG, 7 days for LPG/AdBlue). Small stations update rarely: the setting **Show older prices too** (up to 3 or 7 days) keeps them in the list with the price date shown
@@ -136,14 +136,13 @@ One card per fuel: for a dual-fuel car add a second card with `fuel: lpg`, or tu
 |---|---|---|
 | `fuel` | – | required |
 | `place` | first place | the name of the place, when you follow several (the visual editor offers a list) |
-| `show` | `[home, list, map, graph]` | the parts to draw: `home` (favourite station), `list` (cheapest stations), `map` (Home Assistant map), `graph` (30 days: your station, the cheapest, the average), `prices` (station map with coloured prices), `regions` (map of the regions), `tank` (all fuels and a full tank), `road` (nearest worthwhile stops with a navigate button), `places` (several places side by side) |
+| `show` | `[home, list, map, graph]` | the parts to draw: `home` (favourite station), `list` (cheapest stations), `map` (Home Assistant map), `graph` (30 days: your station, the cheapest, the average), `prices` (station map with coloured prices), `regions` (map of the regions), `tank` (all fuels and a full tank), `road` (the nearest stations with a navigate button), `places` (several places side by side) |
 | `layout` | `auto` | `auto`: two columns (station and list on the left, map and graph on the right) when the card is wide, one column when it is narrow, as on a phone; `columns`: always two; `stack`: always one |
 | `stations` | `5` | how many stations in the list (1–10; the Home Assistant map shows at most 5) |
-| `sort` | `price` | `price`, `distance` (from the centre of the place) or `worth`: the saving on a full tank against the average, minus the cost of the detour. Chips above the list let you switch |
+| `sort` | `price` | `price` or `distance`. Distances start from your Home Assistant home when the place is a town near it, else from the point or person of the place, else from the middle of the town. Chips above the list let you switch |
 | `navigation` | `google` | the app of the navigate button: `google`, `mapy` (Mapy.com) or `waze`. The station sheet offers all three |
 | `fuel_switch` | `false` | chips to switch the fuel without editing the card |
-| `tank_size` | `40` | litres of a full tank (`tank` part, “worth it”) |
-| `consumption` | `7` | l/100 km, for the cost of the detour |
+| `tank_size` | `40` | litres of a full tank (the `tank` part) |
 | `places` | – | names of the places to show side by side (part `places`) |
 | `look` | `dark` | `dark` (the card's own look) or `ha` (the colours and corners of your Home Assistant theme) |
 | `big` | `false` | wall panel: one big price (favourite station, else the cheapest) |
@@ -156,15 +155,15 @@ Texts follow the language chosen in the setup. If the card does not show up afte
 
 ### The new parts
 
-<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card-v08-maps.png" alt="The list sorted by “worth it”, the station map with coloured prices, the region map and the full tank" width="780"></p>
-<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card-v08-graph-road.png" alt="Own 30-day graph, “on the road” with navigation buttons" width="560"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card-v081-maps.png" alt="The list, the station map with coloured prices, the region map and the full tank" width="780"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/docs/card-v081-graph-road.png" alt="Own 30-day graph, “on the road” with navigation buttons" width="560"></p>
 
 
 - **`graph`** draws the last 30 days of your favourite station, of the cheapest station and of the average of your area, from Home Assistant's long-term statistics (it fills in as prices are recorded).
 - **`prices`** draws the stations on a plain map: each marker carries the price and is coloured from green (cheap) to red (dear); your station has a white ring, tap a marker for its sheet.
 - **`regions`** colours the 14 regions (kraj) by their average price; tap a region for its average, its rank and the difference with the country. Needs the average prices; your own region is outlined.
 - **`tank`** lists every fuel of the place with the cheapest price, your station, the average, what a full tank costs at the cheapest station and what you save against the average; tap a fuel to compare it below.
-- **`road`** is for a place that follows a person or a point: the three most worthwhile stops, nearest first, with one button to navigate.
+- **`road`** is for a place that follows a person or a point: the three nearest stations, with one button to navigate. A town near your Home Assistant home works too: the distances start from your home.
 - **`places`** puts several places side by side (`places: [Praha, Brno]`).
 
 A **badge**: `type: custom:ceny-paliv-badge`, `fuel: n95` (`place:` for another place, `show: home` for your favourite station). A **tile card feature**: add `features: [{type: custom:ceny-paliv-tile-feature}]` to a tile card whose entity is a Ceny paliv sensor (the cheapest price, the average, the difference and your rank).
@@ -196,7 +195,7 @@ For a notification when your station's price changes, see `examples/price_alert.
 
 ## 4. Station logos (optional)
 
-The card shows a round logo for the chain of each station. Without a logo it draws a coloured badge with the initials of the chain (`OR`, `PR`…), so nothing has to be set up.
+The card shows a round logo for the chain of each station. Without a logo it draws a coloured badge with the initials of the chain (`OR`, `PR`…), so nothing has to be set up. The logo also appears on the Home Assistant map of the card and, as the picture of the station sensors, anywhere Home Assistant shows entity pictures: the sensors `…_1` to `…_5` take the logo of the station that holds the rank at that moment.
 
 To have the real logos, open **Settings → Devices & services → Ceny paliv → Configure** and go to the **Station logos** step: tick the chains you want. They are downloaded (a few KB each) from the [logo pack](logos/) in this repository into the folder `ceny_paliv_logos` of your Home Assistant configuration and the card finds them by itself. Untick a chain to remove its logo. The chains of your city are preselected the first time. Nothing is downloaded unless you tick it, and the pack is not installed with the integration.
 
@@ -250,6 +249,7 @@ What is planned is tracked in the open, one issue per feature:
 
 - **[v0.7.0](https://github.com/donthedandy/ha-ceny-paliv/milestone/1)** – smarter data: follow a person or device, more location sources, average prices, older prices, cleaner addresses, price-change events and blueprints.
 - **[v0.8.0](https://github.com/donthedandy/ha-ceny-paliv/milestone/2)** – a richer card: station details with navigation, sorting, a comparison graph, tank cost, more maps, badge and tile (released).
+- **v0.8.1** – distances from your Home Assistant home, chain logos on the Home Assistant map, the town's average, lowest and highest over 30 days in the graph; “Worth it” removed (released).
 
 Ideas and votes are welcome: open an issue or add a 👍 to the one you want.
 
