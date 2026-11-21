@@ -21,6 +21,7 @@ from .const import (
     KEY_HEADER,
     KEY_IN_HEADER,
     LABELS,
+    MAP_STATIONS,
     MAPS,
     MAX_RETRY_AFTER,
     MAX_AGE_DAYS_BY_FUEL,
@@ -439,6 +440,12 @@ def build_payload(
         kept.append((m, d))
     kept.sort(key=lambda t: t[0]["price"])
     stations = [entry(m, d, i + 1) for i, (m, d) in enumerate(kept[:TOP])]
+    # every up-to-date station of the place (the card sorts them and draws the price map): lighter than `stations`
+    pool = []
+    for m, d in kept[:MAP_STATIONS]:
+        item = {k: v for k, v in entry(m, d, None).items() if k not in ("rank", "street", "title")}
+        item["trends"] = {"1": item["trends"]["1"]}  # the card only shows the day's change here
+        pool.append(item)
 
     home = None
     if home_slug:
@@ -460,6 +467,8 @@ def build_payload(
     return {
         "averages": price_overview(markers, today, max_age, in_city, centre),
         "stations": stations,
+        "map_stations": pool,
+        "centre": {"lat": place.lat, "lng": place.lng} if centre else None,
         "home": home,
         "fetched_at": stamp,
         "last_attempt": stamp,

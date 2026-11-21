@@ -25,6 +25,9 @@ from .entity import CenyPalivBaseEntity
 
 TOP_ATTRIBUTES = (
     "stations",
+    "map_stations",
+    "centre",
+    "averages",
     "home",
     "fetched_at",
     "last_attempt",
@@ -100,6 +103,9 @@ class CenyPalivEntity(CenyPalivBaseEntity, SensorEntity):
 
 class CenyPalivTop5Sensor(CenyPalivEntity):
     _attr_icon = "mdi:gas-station"
+    _attr_state_class = SensorStateClass.MEASUREMENT  # long-term statistics: the card draws the cheapest price over 30 days
+    # big and only useful to the card: not worth filling the database with them
+    _unrecorded_attributes = frozenset({"map_stations", "averages", "labels", "logos", "stations"})
 
     def __init__(self, coordinator, entry, place, fuel) -> None:
         super().__init__(coordinator, entry, place, fuel, "top5")

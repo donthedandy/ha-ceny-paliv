@@ -6,9 +6,10 @@ from datetime import timedelta
 DOMAIN = "ceny_paliv"
 
 CARD_URL = "/ceny_paliv_static/ceny-paliv-card.js"
-CARD_VERSION = "0.7.0"
+CARD_VERSION = "0.8.0"
 
 # Optional station logos (pack in the GitHub repository, downloaded on request, see logos.py)
+REGIONS_URL = "/ceny_paliv_static/regions.json"
 LOGO_URL = "/ceny_paliv_static/logos"  # served from <config>/ceny_paliv_logos/
 LOGO_DIR_NAME = "ceny_paliv_logos"
 _PACK = "https://raw.githubusercontent.com/donthedandy/ha-ceny-paliv/main/logos"
@@ -71,6 +72,7 @@ FUELS: dict[str, tuple[str, str]] = {
 DEFAULT_FUELS = ["n95"]
 
 TOP = 5
+MAP_STATIONS = 80  # stations handed to the card for sorting and the price map
 # How old a price may be to be shown: 0 = today only, 1 = today + yesterday, ...
 # LPG / CNG / AdBlue stations are updated less often, so they get a longer window.
 MAX_AGE_DAYS_DEFAULT = 1
@@ -120,7 +122,7 @@ LABELS: dict[str, dict[str, str]] = {
         "up": "up",
         "longpress": "long-press a row for your station history",
         "e10_note": "(E10 not distinguished)",
-        "tap_station": "tap a station to open Google Maps",
+        "tap_station": "tap a station for details and navigation",
         "vs_yesterday": "vs yesterday",
         "name_cheapest": "cheapest",
         "name_home": "favourite station",
@@ -159,7 +161,7 @@ LABELS: dict[str, dict[str, str]] = {
         "up": "roste",
         "longpress": "dlouhým stisknutím řádku zobrazíte historii vaší stanice",
         "e10_note": "(E10 se nerozlišuje)",
-        "tap_station": "klepnutím na stanici otevřete Google Maps",
+        "tap_station": "klepnutím na stanici zobrazíte podrobnosti a navigaci",
         "vs_yesterday": "oproti včerejšku",
         "name_cheapest": "nejlevnější",
         "name_home": "oblíbená stanice",
