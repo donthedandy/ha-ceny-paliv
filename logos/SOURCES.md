@@ -9,11 +9,15 @@ Sources (the files were resized and placed on a white square; the artwork itself
 | File | Chain | Source |
 |---|---|---|
 | `armex.png` | Armex Oil | [armexoil.cz website icon](https://www.armexoil.cz/) |
+| `arze.png` | Arze | Cropped from a photograph of an Arze station supplied by the project maintainer (the sign on the canopy) |
 | `avia.png` | AVIA | [Commons: File:Avia logo (1983).svg](https://commons.wikimedia.org/wiki/File:Avia_logo_(1983).svg) |
 | `eurooil.png` | EuroOil | [Commons: File:Logo EuroOil.png](https://commons.wikimedia.org/wiki/File:Logo_EuroOil.png) |
+| `eurobit.png` | Eurobit | Logo file supplied by the project maintainer |
+| `hdb.png` | HDB | Cropped from a photograph of an HDB station supplied by the project maintainer (the price sign) |
 | `exxon.png` | Exxon | [Commons: File:Exxon logo.svg](https://commons.wikimedia.org/wiki/File:Exxon_logo.svg) |
 | `globus.png` | Globus | [Commons: File:Logo of Globus (2009).svg](https://commons.wikimedia.org/wiki/File:Logo_of_Globus_(2009).svg) |
 | `gulf.png` | Gulf | [Commons: File:Gulf Oil logo.svg](https://commons.wikimedia.org/wiki/File:Gulf_Oil_logo.svg) |
+| `kmprona.png` | KM-Prona | Logo file supplied by the project maintainer (its white lettering is placed under the diamond, on a dark square) |
 | `makro.png` | Makro | [Commons: File:Makro logo la.svg](https://commons.wikimedia.org/wiki/File:Makro_logo_la.svg) |
 | `mol.png` | MOL | [Commons: File:MOL Logo.svg](https://commons.wikimedia.org/wiki/File:MOL_Logo.svg) |
 | `omv.png` | OMV | [Commons: File:Omv logo.svg](https://commons.wikimedia.org/wiki/File:Omv_logo.svg) |

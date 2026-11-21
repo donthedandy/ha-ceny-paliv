@@ -9,10 +9,24 @@
       ]
     },
     {
+      "id": "arze",
+      "label": "Arze",
+      "match": [
+        "arze"
+      ]
+    },
+    {
       "id": "avia",
       "label": "AVIA",
       "match": [
         "avia"
+      ]
+    },
+    {
+      "id": "eurobit",
+      "label": "Eurobit",
+      "match": [
+        "eurobit"
       ]
     },
     {
@@ -42,6 +56,22 @@
       "label": "Gulf",
       "match": [
         "gulf"
+      ]
+    },
+    {
+      "id": "hdb",
+      "label": "HDB",
+      "match": [
+        "hdb"
+      ]
+    },
+    {
+      "id": "kmprona",
+      "label": "KM-Prona",
+      "match": [
+        "km-prona",
+        "km prona",
+        "kmprona"
       ]
     },
     {
