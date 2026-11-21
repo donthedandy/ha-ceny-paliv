@@ -10,11 +10,10 @@
  *   show: [home, list, map, graph]   # parts: home, list, map, graph, prices, regions, tank, road, places
  *   layout: auto         # auto = 2 columns when the card is wide | columns | stack
  *   stations: 5          # 1-10 stations in the list
- *   sort: price          # price | distance | worth (saving on a full tank minus the detour); chips let you switch
+ *   sort: price          # price | distance; chips let you switch
  *   navigation: google   # google | mapy | waze: the app of the "Navigate" button
  *   fuel_switch: false   # chips to switch the fuel without editing the card
- *   tank_size: 40        # litres of a full tank (tank part, "worth it")
- *   consumption: 7       # l/100 km (the cost of the detour)
+ *   tank_size: 40        # litres of a full tank (the tank part)
  *   places: [Praha, Brno] # several places side by side (part "places")
  *   look: dark           # dark | ha (colours of your Home Assistant theme)
  *   big: false           # wall panel: one big price
@@ -32,7 +31,7 @@
  *
  * Texts come from the language chosen in the integration setup (attribute `labels` of the top5 sensor).
  */
-const CARD_VERSION = '0.8.0';
+const CARD_VERSION = '0.8.1';
 
 const DEFAULT_PARTS = ['home', 'list', 'map', 'graph'];
 const COL_A = ['home', 'road', 'list', 'tank', 'places'];
@@ -58,24 +57,22 @@ const heat = (t) => `hsl(${Math.round(140 * (1 - Math.min(1, Math.max(0, t))))} 
 // Texts of the card itself (the integration sends the others as `labels`)
 const TXT = {
   en: {
-    sort_price: 'Price', sort_distance: 'Distance', sort_worth: 'Worth it', details: 'Station', navigate: 'Navigate', close: 'Close',
-    mbenzin: 'Open on mBenzin', saves: 'saves {x} Kč', detour: 'detour costs {x} Kč', away: '{d} km away',
-    worth_note: 'On a full tank of {l} l against the average, minus a {d} km round trip at {c} l/100 km.',
-    graph_title: 'Last 30 days', g_home: 'My station', g_cheapest: 'Cheapest', g_area: 'Average', g_none: 'No history yet: the graph fills in as prices are recorded.',
+    sort_price: 'Price', sort_distance: 'Distance', details: 'Station', navigate: 'Navigate', close: 'Close',
+    mbenzin: 'Open on mBenzin', away: '{d} km away',
+    graph_title: 'Last 30 days', g_home: 'My station', g_cheapest: 'Cheapest', g_area: 'Average', g_sum: '{n} days: town average {a} · lowest {lo} · highest {hi} Kč/l', g_none: 'No history yet: the graph fills in as prices are recorded.',
     g_loading: 'Loading the history…', tank_title: 'Full tank · {l} l', tank_fuel: 'Fuel', tank_cheapest: 'Cheapest', tank_mine: 'My station', tank_avg: 'Average',
     tank_cost: 'Full tank', tank_save: 'Saving', compare: 'Comparison', regions_title: 'Average price by region', region_cheapest: 'cheapest', region_dearest: 'dearest',
-    region_info: '{n} stations · {v} against the country', rank_of: '#{r} of {t}', prices_title: 'Stations on the map', prices_empty: 'No stations to show.', prices_outside: 'farther away', worth_road: 'Saving on a full tank of {l} l against the average, minus the round trip at {c} l/100 km.',
+    region_info: '{n} stations · {v} against the country', rank_of: '#{r} of {t}', prices_title: 'Stations on the map', prices_empty: 'No stations to show.', prices_outside: 'farther away',
     road_title: 'On the road', road_need: 'Needs a place that follows a person (source “Person”) or a point.', places_title: 'Places', no_place: 'Place not found',
     badge_cheapest: 'Cheapest', badge_home: 'My station', tile_cheapest: 'Cheapest', tile_avg: 'Average', tile_rank: 'Rank',
   },
   cs: {
-    sort_price: 'Cena', sort_distance: 'Vzdálenost', sort_worth: 'Vyplatí se', details: 'Stanice', navigate: 'Navigovat', close: 'Zavřít',
-    mbenzin: 'Otevřít na mBenzin', saves: 'ušetříte {x} Kč', detour: 'objížďka stojí {x} Kč', away: '{d} km daleko',
-    worth_note: 'Při plné nádrži {l} l proti průměru, po odečtení cesty tam a zpět ({d} km) při {c} l/100 km.',
-    graph_title: 'Posledních 30 dní', g_home: 'Moje stanice', g_cheapest: 'Nejlevnější', g_area: 'Průměr', g_none: 'Zatím žádná historie: graf se plní s ukládáním cen.',
+    sort_price: 'Cena', sort_distance: 'Vzdálenost', details: 'Stanice', navigate: 'Navigovat', close: 'Zavřít',
+    mbenzin: 'Otevřít na mBenzin', away: '{d} km daleko',
+    graph_title: 'Posledních 30 dní', g_home: 'Moje stanice', g_cheapest: 'Nejlevnější', g_area: 'Průměr', g_sum: '{n} dní: průměr ve městě {a} · nejnižší {lo} · nejvyšší {hi} Kč/l', g_none: 'Zatím žádná historie: graf se plní s ukládáním cen.',
     g_loading: 'Načítám historii…', tank_title: 'Plná nádrž · {l} l', tank_fuel: 'Palivo', tank_cheapest: 'Nejlevnější', tank_mine: 'Moje stanice', tank_avg: 'Průměr',
     tank_cost: 'Plná nádrž', tank_save: 'Úspora', compare: 'Srovnání', regions_title: 'Průměrná cena podle kraje', region_cheapest: 'nejlevnější', region_dearest: 'nejdražší',
-    region_info: '{n} stanic · {v} oproti celé ČR', rank_of: '{r}. z {t}', prices_title: 'Stanice na mapě', prices_empty: 'Žádné stanice k zobrazení.', prices_outside: 'dál', worth_road: 'Úspora na plné nádrži {l} l proti průměru, po odečtení cesty tam a zpět při {c} l/100 km.',
+    region_info: '{n} stanic · {v} oproti celé ČR', rank_of: '{r}. z {t}', prices_title: 'Stanice na mapě', prices_empty: 'Žádné stanice k zobrazení.', prices_outside: 'dál',
     road_title: 'Na cestě', road_need: 'Potřebuje místo, které sleduje osobu (zdroj „Osoba“), nebo bod.', places_title: 'Místa', no_place: 'Místo nenalezeno',
     badge_cheapest: 'Nejlevnější', badge_home: 'Moje stanice', tile_cheapest: 'Nejlevnější', tile_avg: 'Průměr', tile_rank: 'Pořadí',
   },
@@ -202,9 +199,8 @@ class CenyPalivCard extends HTMLElement {
     this._footer = this._config.show_footer != null ? !!this._config.show_footer : !this._compact;
     this._mapHeight = Number(this._config.map_height) > 0 ? Number(this._config.map_height) : 0;
     this._tank = Number(this._config.tank_size) > 0 ? Number(this._config.tank_size) : 40;
-    this._cons = Number(this._config.consumption) > 0 ? Number(this._config.consumption) : 7;
     this._nav = ['google', 'mapy', 'waze'].includes(this._config.navigation) ? this._config.navigation : 'google';
-    this._sort = ['price', 'distance', 'worth'].includes(this._config.sort) ? this._config.sort : 'price';
+    this._sort = ['price', 'distance'].includes(this._config.sort) ? this._config.sort : 'price';
     this._look = this._config.look === 'ha' ? 'ha' : 'dark';
     this._fuel = this._config.fuel;
     this._ids = null;
@@ -337,8 +333,10 @@ class CenyPalivCard extends HTMLElement {
     const helpers = window.loadCardHelpers ? await window.loadCardHelpers() : null;
     if (!helpers) return;
     const hasHome = !!this._hass.states[this._ids.home];
-    const entities = this._ids.pos.slice(0, Math.min(this._n, 5)).filter(Boolean).map((id) => ({ entity: id, label_mode: 'state', focus: true }));
-    if (hasHome) entities.push({ entity: this._ids.home, label_mode: 'state', focus: true });
+    // A station with a logo is drawn as its logo, the others as their price (the map shows one or the other).
+    const mark = (id) => ({ entity: id, focus: true, ...(this._hass.states[id] && this._hass.states[id].attributes.entity_picture ? {} : { label_mode: 'state' }) });
+    const entities = this._ids.pos.slice(0, Math.min(this._n, 5)).filter(Boolean).map(mark);
+    if (hasHome) entities.push(mark(this._ids.home));
     const config = { type: 'map', theme_mode: this._look === 'ha' ? 'auto' : 'dark', auto_fit: true, default_zoom: 12, hours_to_show: 0, entities };
     const el = helpers.createCardElement(config);
     el.hass = this._hass;
@@ -434,12 +432,19 @@ class CenyPalivCard extends HTMLElement {
     return pool;
   }
 
+  // Where the distances are measured from: the centre the integration sends (a point or a person), else the
+  // Home Assistant home when it is near the place (a town), else the middle of the stations.
   _centre(pool) {
     const c = this._attrs().centre;
     if (c && num(c.lat) !== null) return { lat: Number(c.lat), lng: Number(c.lng), real: true };
     const ok = (pool || []).filter((s) => num(s.lat) !== null);
     if (!ok.length) return null;
-    return { lat: ok.reduce((x, s) => x + Number(s.lat), 0) / ok.length, lng: ok.reduce((x, s) => x + Number(s.lng), 0) / ok.length, real: false };
+    const mid = { lat: ok.reduce((x, s) => x + Number(s.lat), 0) / ok.length, lng: ok.reduce((x, s) => x + Number(s.lng), 0) / ok.length };
+    const h = this._hass && this._hass.config;
+    if (h && num(h.latitude) !== null && num(h.longitude) !== null && km(Number(h.latitude), Number(h.longitude), mid.lat, mid.lng) <= 60) {
+      return { lat: Number(h.latitude), lng: Number(h.longitude), real: true, home: true };
+    }
+    return { lat: mid.lat, lng: mid.lng, real: false };
   }
 
   _distance(s, centre) {
@@ -448,29 +453,11 @@ class CenyPalivCard extends HTMLElement {
     return km(centre.lat, centre.lng, Number(s.lat), Number(s.lng));
   }
 
-  _refPrice(pool) {
-    const avg = ((this._attrs().averages || {}).area || {}).average;
-    if (num(avg) !== null) return Number(avg);
-    const p = pool.map((s) => Number(s.price)).filter((x) => !isNaN(x));
-    return p.length ? p.reduce((x, y) => x + y, 0) / p.length : null;
-  }
-
-  // What a stop is worth: the saving on a full tank against the average, minus the cost of the round trip.
-  _worth(s, centre, ref) {
-    const d = this._distance(s, centre);
-    if (ref == null) return { saving: null, detour: null, net: null, d };
-    const saving = (ref - Number(s.price)) * this._tank;
-    const detour = d == null ? 0 : (2 * d * this._cons / 100) * Number(s.price);
-    return { saving, detour, net: saving - detour, d };
-  }
-
   _sorted(pool, mode) {
     const centre = this._centre(pool);
-    const ref = this._refPrice(pool);
-    const rows = pool.map((s) => Object.assign({}, s, { _w: this._worth(s, centre, ref) }));
+    const rows = pool.map((s) => Object.assign({}, s, { _w: { d: this._distance(s, centre) } }));
     const byPrice = (a, b) => Number(a.price) - Number(b.price);
     if (mode === 'distance') rows.sort((a, b) => ((a._w.d == null ? 1e9 : a._w.d) - (b._w.d == null ? 1e9 : b._w.d)) || byPrice(a, b));
-    else if (mode === 'worth') rows.sort((a, b) => ((b._w.net == null ? -1e9 : b._w.net) - (a._w.net == null ? -1e9 : a._w.net)) || byPrice(a, b));
     else rows.sort(byPrice);
     return rows;
   }
@@ -616,14 +603,13 @@ class CenyPalivCard extends HTMLElement {
     const when = age <= 0 ? T('today') : `<span style="color:var(--cp-warn)">${esc(age === 1 ? T('yesterday') : (s.updated || '—'))}</span>`;
     const d = s._w ? s._w.d : null;
     const dist = d != null ? ` · ${d.toFixed(1)} km` : '';
-    const worthTxt = mode === 'worth' && s._w && s._w.net != null ? ` · <span style="color:${s._w.net >= 0 ? 'var(--cp-good)' : 'var(--cp-bad)'}">${s._w.net >= 0 ? '+' : '−'}${Math.abs(Math.round(s._w.net))} Kč</span>` : '';
     const home = s.home ? `<ha-icon icon="mdi:home" title="${esc(T('my_station'))}" style="--mdc-icon-size:14px;color:var(--cp-accent);margin-left:6px"></ha-icon>` : '';
     const idx = this._rows.push(s) - 1;
     return `<div class="row" data-i="${idx}">
       ${this._avatar(s, i + 1, best)}
       <div style="flex:1 1 auto;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0">
         <span class="title" style="${cp ? 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis' : ''}">${esc(name)}${cp ? ` <span style="font-size:11px;font-weight:500;color:var(--cp-sub)">${esc(addr)}${dist}</span>` : ''}${home}</span>
-        ${cp ? '' : `<span class="sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(addr)}${dist} · ${when}${worthTxt}</span>`}</div>
+        ${cp ? '' : `<span class="sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(addr)}${dist} · ${when}</span>`}</div>
       <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:40px" title="${esc(T('vs_yesterday'))}">
         <ha-icon icon="${tr.icon}" style="--mdc-icon-size:18px;color:${tr.color}"></ha-icon>
         <span style="font-size:10px;font-weight:700;color:${tr.color}">${tr.txt}</span></div>
@@ -660,7 +646,7 @@ class CenyPalivCard extends HTMLElement {
       <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">
         <span style="font-size:${cp ? 22 : 28}px;font-weight:800;letter-spacing:-0.02em;line-height:1;color:${min === null ? 'var(--cp-dim)' : 'var(--cp-good)'}">${min === null ? '—' : fp(min)}</span>
         <span style="font-size:11px;color:var(--cp-sub);font-weight:600">${esc(unit)}</span></div></div>`;
-    const sorts = cp ? '' : `<div class="chips">${['price', 'distance', 'worth'].map((m) => `<span class="chip${m === mode ? ' on' : ''}" data-act="sort" data-v="${m}">${esc(this._X('sort_' + m))}</span>`).join('')}</div>`;
+    const sorts = cp ? '' : `<div class="chips">${['price', 'distance'].map((m) => `<span class="chip${m === mode ? ' on' : ''}" data-act="sort" data-v="${m}">${esc(this._X('sort_' + m))}</span>`).join('')}</div>`;
     const rows = list.map((s, i) => this._rowHtml(s, i, min, mode, today)).join('');
     // footer
     const now = new Date();
@@ -679,14 +665,14 @@ class CenyPalivCard extends HTMLElement {
     return `<div class="card${cp ? ' compact' : ''}">${head}${sorts}${rows}${foot}</div>`;
   }
 
-  // On the road: the stops worth a detour, nearest first, one tap to navigate.
+  // On the road: the nearest stations, one tap to navigate.
   _roadHtml() {
     const at = this._attrs();
     const pool = this._pool();
     const centre = this._centre(pool);
     const head = `<div class="title" style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><ha-icon icon="mdi:road-variant" style="--mdc-icon-size:22px;color:var(--cp-accent)"></ha-icon>${esc(this._X('road_title'))} · ${esc(at.fuel_label || this._fuel)}</div>`;
     if (!centre || !centre.real) return `<div class="card">${head}<span class="sub">${esc(this._X('road_need'))}</span></div>`;
-    const rows = this._sorted(pool, 'worth').slice(0, Math.min(this._n, 3));
+    const rows = this._sorted(pool, 'distance').slice(0, Math.min(this._n, 3));
     const unit = at.unit_of_measurement || 'Kč/l';
     const body = rows.map((s) => {
       const idx = this._rows.push(s) - 1;
@@ -694,11 +680,11 @@ class CenyPalivCard extends HTMLElement {
       return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--cp-line)">
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;cursor:pointer" data-i="${idx}">
           <span class="title" style="font-size:17px">${esc(s.name)}</span>
-          <span class="sub">${w.d != null ? w.d.toFixed(1) + ' km' : ''}${w.net != null ? ` · <span style="color:${w.net >= 0 ? 'var(--cp-good)' : 'var(--cp-bad)'}">${w.net >= 0 ? '+' : '−'}${Math.abs(Math.round(w.net))} Kč</span>` : ''}</span></div>
+          <span class="sub">${w.d != null ? w.d.toFixed(1) + ' km' : ''}</span></div>
         <div style="text-align:right"><div style="font-size:26px;font-weight:800;letter-spacing:-0.02em">${fp(s.price)}</div><div class="sub">${esc(unit)}</div></div>
         <a class="btn main" style="padding:12px 14px" href="${esc(this._navUrl(s, this._nav))}" target="_blank" rel="noopener noreferrer" title="${esc(this._X('navigate'))}"><ha-icon icon="mdi:navigation-variant" style="--mdc-icon-size:22px"></ha-icon></a></div>`;
     }).join('');
-    return `<div class="card">${head}${body}<div class="muted" style="margin-top:8px">${esc(this._X('worth_road', { l: this._tank, c: this._cons }))}</div></div>`;
+    return `<div class="card">${head}${body}</div>`;
   }
 
   // Every fuel of the place, what a full tank costs, and the favourite against the cheapest and the average.
@@ -913,7 +899,16 @@ class CenyPalivCard extends HTMLElement {
     const ticks = [0, 0.5, 1].map((f) => { const t = t0 + (t1 - t0) * f; return `<text x="${x(t).toFixed(1)}" y="${H - 6}" text-anchor="${f === 0 ? 'start' : f === 1 ? 'end' : 'middle'}" style="font-size:11px;fill:var(--cp-sub)">${esc(new Date(t).toLocaleDateString(LOC, { day: 'numeric', month: 'short' }))}</text>`; }).join('');
     const lines = series.map((s) => `<polyline fill="none" points="${s.rows.map((p) => x(p[0]).toFixed(1) + ',' + y(p[1]).toFixed(1)).join(' ')}" style="stroke:${s.color};stroke-width:${s.w};stroke-linejoin:round;stroke-linecap:round${s.dash ? `;stroke-dasharray:${s.dash}` : ''}"/>`).join('');
     const legend = series.map((s) => { const last = s.rows[s.rows.length - 1][1]; return `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--cp-text2);font-weight:600"><i style="display:inline-block;width:14px;height:3px;border-radius:2px;background:${s.color}"></i>${esc(s.label)} <b>${Number(last).toFixed(2)}</b></span>`; }).join('');
-    return `<div class="card">${title}<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${grid}${ticks}${lines}</svg><div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:6px">${legend}</div></div>`;
+    // The average of the town over the period, from the long-term statistics of the area-average sensor.
+    const area = series.find((s) => this._ids.avg && s.id === this._ids.avg.area);
+    let summary = '';
+    if (area && area.rows.length >= 3) {
+      const v = area.rows.map((p) => p[1]);
+      const days = Math.round((area.rows[area.rows.length - 1][0] - area.rows[0][0]) / 86400000) + 1;
+      const avg = v.reduce((a, b) => a + b, 0) / v.length;
+      summary = `<div class="muted" style="margin-top:6px">${esc(this._X('g_sum', { n: days, a: avg.toFixed(2), lo: Math.min(...v).toFixed(2), hi: Math.max(...v).toFixed(2) }))}</div>`;
+    }
+    return `<div class="card">${title}<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${grid}${ticks}${lines}</svg><div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:6px">${legend}</div>${summary}</div>`;
   }
 
   // ---------------------------------------------------------------- station details
@@ -924,7 +919,7 @@ class CenyPalivCard extends HTMLElement {
     if (!s) { el.innerHTML = ''; return; }
     const at = this._attrs();
     const pool = this._pool();
-    const w = s._w || this._worth(s, this._centre(pool), this._refPrice(pool));
+    const w = s._w || { d: this._distance(s, this._centre(pool)) };
     const unit = at.unit_of_measurement || 'Kč/l';
     const apps = [['mapy', 'Mapy.com', 'mdi:map-marker-radius'], ['google', 'Google Maps', 'mdi:google-maps'], ['waze', 'Waze', 'mdi:waze']];
     const main = this._nav;
@@ -938,10 +933,6 @@ class CenyPalivCard extends HTMLElement {
       lines.push(`<span class="sub">${esc(when)}</span>`);
     }
     if (w.d != null) lines.push(`<span class="sub">${esc(this._X('away', { d: w.d.toFixed(1) }))}</span>`);
-    if (w.net != null) {
-      lines.push(`<span style="font-size:13px;font-weight:700;color:${w.net >= 0 ? 'var(--cp-good)' : 'var(--cp-bad)'}">${esc(this._X('saves', { x: Math.round(w.saving) }))} · ${esc(this._X('detour', { x: Math.round(w.detour) }))} = ${w.net >= 0 ? '+' : '−'}${Math.abs(Math.round(w.net))} Kč</span>`);
-      lines.push(`<span class="muted">${esc(this._X('worth_note', { l: this._tank, d: w.d == null ? 0 : (2 * w.d).toFixed(1), c: this._cons }))}</span>`);
-    }
     el.innerHTML = `<div class="sheet" data-act="close"><div class="card" data-act="keep">
       <div style="display:flex;align-items:center;gap:12px"><span style="position:relative;width:44px;height:44px;flex-shrink:0;display:block">${this._disc(s, 44)}</span>
         <div style="flex:1;min-width:0"><div class="title" style="font-size:17px">${esc(s.name || '')}</div></div>
@@ -1104,9 +1095,9 @@ const EDITOR_TEXT = {
     home: 'My station', list: 'Cheapest stations', map: 'Map', graph: '30-day graph', prices: 'Station map with prices', regions: 'Region map', tank: 'Fuels and full tank',
     road: 'On the road', places: 'Places side by side',
     auto: 'Automatic: 2 columns when the card is wide', columns: 'Always 2 columns', stack: 'Always 1 column',
-    sort: 'Sort the list by', price: 'Price', distance: 'Distance', worth: 'Worth it (saving minus detour)',
+    sort: 'Sort the list by', price: 'Price', distance: 'Distance',
     navigation: 'Navigation app', google: 'Google Maps', mapy: 'Mapy.com', waze: 'Waze', fuel_switch: 'Chips to switch the fuel', tank_size: 'Full tank in litres',
-    consumption: 'Consumption in l/100 km', look: 'Look', dark: 'Ceny paliv (dark)', ha: 'Home Assistant theme', big: 'Big price for wall panels',
+    look: 'Look', dark: 'Ceny paliv (dark)', ha: 'Home Assistant theme', big: 'Big price for wall panels',
     place_list: 'Places to show side by side',
   },
   cs: {
@@ -1115,9 +1106,9 @@ const EDITOR_TEXT = {
     home: 'Moje stanice', list: 'Nejlevnější stanice', map: 'Mapa', graph: 'Graf za 30 dní', prices: 'Mapa stanic s cenami', regions: 'Mapa krajů', tank: 'Paliva a plná nádrž',
     road: 'Na cestě', places: 'Místa vedle sebe',
     auto: 'Automaticky: 2 sloupce, je-li karta široká', columns: 'Vždy 2 sloupce', stack: 'Vždy 1 sloupec',
-    sort: 'Řadit seznam podle', price: 'Ceny', distance: 'Vzdálenosti', worth: 'Vyplatí se (úspora minus objížďka)',
+    sort: 'Řadit seznam podle', price: 'Ceny', distance: 'Vzdálenosti',
     navigation: 'Navigační aplikace', google: 'Google Maps', mapy: 'Mapy.com', waze: 'Waze', fuel_switch: 'Tlačítka pro přepnutí paliva', tank_size: 'Plná nádrž v litrech',
-    consumption: 'Spotřeba v l/100 km', look: 'Vzhled', dark: 'Ceny paliv (tmavý)', ha: 'Motiv Home Assistantu', big: 'Velká cena pro nástěnné panely',
+    look: 'Vzhled', dark: 'Ceny paliv (tmavý)', ha: 'Motiv Home Assistantu', big: 'Velká cena pro nástěnné panely',
     place_list: 'Místa zobrazená vedle sebe',
   },
 };
@@ -1125,7 +1116,7 @@ const EDITOR_TEXT = {
 // What a config means when a key is missing: the editor saves only what differs from this.
 const EDITOR_DEFAULTS = {
   show: DEFAULT_PARTS, layout: 'auto', stations: 5, compact: false, map_height: 0, sort: 'price', navigation: 'google', fuel_switch: false,
-  tank_size: 40, consumption: 7, look: 'dark', big: false,
+  tank_size: 40, look: 'dark', big: false,
 };
 
 class CenyPalivCardEditor extends HTMLElement {
@@ -1156,7 +1147,7 @@ class CenyPalivCardEditor extends HTMLElement {
     const L = EDITOR_TEXT[lang];
     const options = CenyPalivCard.fuels(this._hass);
     this._form.hass = this._hass;
-    this._form.data = Object.assign({ show: DEFAULT_PARTS, layout: 'auto', stations: 5, compact: false, show_footer: !this._config.compact, map_height: 0, sort: 'price', navigation: 'google', fuel_switch: false, tank_size: 40, consumption: 7, look: 'dark', big: false }, this._config);
+    this._form.data = Object.assign({ show: DEFAULT_PARTS, layout: 'auto', stations: 5, compact: false, show_footer: !this._config.compact, map_height: 0, sort: 'price', navigation: 'google', fuel_switch: false, tank_size: 40, look: 'dark', big: false }, this._config);
     const places = CenyPalivCard.places(this._hass, this._config.fuel);
     const allPlaces = CenyPalivCard.places(this._hass);
     const sel = (name, list, mode = 'dropdown') => ({ name, selector: { select: { mode, options: list.map((p) => ({ value: p, label: L[p] })) } } });
@@ -1167,11 +1158,10 @@ class CenyPalivCardEditor extends HTMLElement {
       ...(allPlaces.length > 1 ? [{ name: 'places', selector: { select: { multiple: true, mode: 'list', options: allPlaces } } }] : []),
       sel('layout', ['auto', 'columns', 'stack']),
       { name: 'stations', selector: { number: { min: 1, max: 10, step: 1, mode: 'slider' } } },
-      sel('sort', ['price', 'distance', 'worth']),
+      sel('sort', ['price', 'distance']),
       sel('navigation', ['google', 'mapy', 'waze']),
       { name: 'fuel_switch', selector: { boolean: {} } },
       { name: 'tank_size', selector: { number: { min: 10, max: 150, step: 1, mode: 'box', unit_of_measurement: 'l' } } },
-      { name: 'consumption', selector: { number: { min: 2, max: 30, step: 0.5, mode: 'box', unit_of_measurement: 'l/100 km' } } },
       sel('look', ['dark', 'ha']),
       { name: 'big', selector: { boolean: {} } },
       { name: 'compact', selector: { boolean: {} } },
