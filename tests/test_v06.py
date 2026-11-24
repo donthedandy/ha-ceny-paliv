@@ -297,6 +297,9 @@ async def test_diagnostics_hold_no_key_and_no_favourite(hass, hass_client, aiocl
     text = json.dumps(diag)
     assert "GOODKEY" not in text and HOME not in text
     assert diag["entry"]["data"]["key"] == REDACTED and diag["entry"]["options"]["homes"] == REDACTED
+    assert diag["entry"]["title"] == REDACTED
+    assert all(sub["title"] == REDACTED for sub in diag["entry"]["places"].values())
+    assert "hradec" not in text.lower()  # the town (entry title and city) stays out of the file
     assert diag["coordinator"]["last_update_success"] is True and diag["coordinator"]["last_exception"] is None
     fuel = diag["places"]["main"]["n95"]
     assert fuel["stations"] == 5 and fuel["home_found"] is True and fuel["fetch_error"] is None
