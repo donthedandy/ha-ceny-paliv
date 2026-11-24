@@ -105,7 +105,7 @@ async def async_sync(hass: HomeAssistant, session: ClientSession, index: list[di
     manifest = await hass.async_add_executor_job(_read_manifest, folder)
 
     for logo_id in sorted(wanted & set(by_id)):
-        if (folder / f"{logo_id}.png").is_file() and logo_id in manifest:
+        if logo_id in manifest and await hass.async_add_executor_job((folder / f"{logo_id}.png").is_file):
             continue
         try:
             async with session.get(LOGO_RAW_URL.format(id=logo_id), headers={"User-Agent": USER_AGENT}, timeout=20) as resp:

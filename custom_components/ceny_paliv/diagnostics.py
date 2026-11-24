@@ -7,11 +7,12 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_HOMES, CONF_KEY, CONF_LOCATION
+from .const import CONF_CITY, CONF_ENTITY, CONF_HOMES, CONF_KEY, CONF_LOCATION, CONF_NAME
 from .coordinator import CenyPalivConfigEntry
 
-# the personal key, the centre of a point place and the favourite stations (they point to where the user lives)
-TO_REDACT = {CONF_KEY, CONF_LOCATION, CONF_LATITUDE, CONF_LONGITUDE, CONF_HOMES}
+# the personal key, the centre of a point place, the favourite stations, and every title, town, name or entity id:
+# titles are made of the coordinates or of the name of the followed person, and users attach this file to public issues
+TO_REDACT = {CONF_KEY, CONF_LOCATION, CONF_LATITUDE, CONF_LONGITUDE, CONF_HOMES, CONF_CITY, CONF_NAME, CONF_ENTITY, "title"}
 
 # per place and fuel: how the last refresh went; the station lists themselves are left out
 PAYLOAD_KEYS = ("fetched_at", "last_attempt", "fetch_error", "next_update", "max_age_days", "city_total", "excluded", "language")
