@@ -1,6 +1,6 @@
 {
   "domain": "ceny_paliv",
-  "name": "Ceny paliv",
+  "name": "Ceny paliv / Czech fuel prices",
   "after_dependencies": [
     "recorder"
   ],
@@ -17,5 +17,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/donthedandy/ha-ceny-paliv/issues",
   "requirements": [],
-  "version": "0.8.3"
+  "version": "0.8.4"
 }
