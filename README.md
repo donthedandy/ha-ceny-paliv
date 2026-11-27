@@ -42,8 +42,8 @@ One click: [![Open your Home Assistant instance and open this repository in the 
 
 Or by hand:
 
-1. HACS → ⋮ → **Custom repositories** → add `https://github.com/donthedandy/ha-ceny-paliv`, category **Integration**.
-2. Search for **Ceny paliv**, download it, **restart** Home Assistant.
+1. Open **HACS**, search for **Ceny paliv** (the integration is in the HACS default list, no custom repository needed) and download it.
+2. **Restart** Home Assistant.
 3. Settings → Devices & services → **Add integration** → **Ceny paliv** (or click [![Open your Home Assistant instance and start setting up the Ceny paliv integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=ceny_paliv)), then:
    1. paste your **access key**
    2. choose the **kind of place**: *a town from the list*, or *around a point* (a marker on the map and a radius, 10 km by default, centred on your Home Assistant location)
@@ -246,7 +246,7 @@ Each station in the `stations` attribute of `sensor.ceny_paliv_<fuel>_top5` has:
 
 ## 🇨🇿 Česky
 
-Úplný český popis (získání klíče, instalace přes HACS, senzory, dashboard) najdete v **[README.cs.md](README.cs.md)**. Stručně: klíč zdarma na reklama@mbenzin.cz, HACS → Vlastní repozitáře → `https://github.com/donthedandy/ha-ceny-paliv` (Integrace) → restart → Přidat integraci **Ceny paliv**.
+Úplný český popis (získání klíče, instalace přes HACS, senzory, dashboard) najdete v **[README.cs.md](README.cs.md)**. Stručně: klíč zdarma na reklama@mbenzin.cz, v HACS vyhledat **Ceny paliv** → stáhnout → restart → Přidat integraci **Ceny paliv**.
 
 ## Roadmap
 
