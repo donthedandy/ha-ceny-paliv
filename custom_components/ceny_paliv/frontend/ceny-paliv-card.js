@@ -31,7 +31,7 @@
  *
  * Texts come from the language chosen in the integration setup (attribute `labels` of the top5 sensor).
  */
-const CARD_VERSION = '0.8.3';
+const CARD_VERSION = '0.8.4';
 
 const DEFAULT_PARTS = ['home', 'list', 'map', 'graph'];
 const COL_A = ['home', 'road', 'list', 'tank', 'places'];
